@@ -1,5 +1,5 @@
 #!/bin/bash
-set -xe
+set -e
 
 BASEDIR=$(dirname $0)
 
@@ -13,6 +13,9 @@ systemctl stop "${SERVICE_NAME}" || true
 systemctl disable "${SERVICE_NAME}" || true
 
 mkdir -p "/var/lib/openstack-networkd"
+rm -f "/var/lib/openstack-networkd/openstack-networkd.log" || true
+rm -f "/var/lib/openstack-networkd/network_data.json" || true
+rm -f "/var/lib/openstack-networkd/old_network_data.json" || true
 
 cp -f "${SRC_BIN_PATH}" "${BIN_PATH}"
 chmod +x "${BIN_PATH}"
