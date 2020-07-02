@@ -9,10 +9,12 @@ BIN_PATH="/usr/local/bin/openstack-networkd.sh"
 SRC_SERVICE_PATH="${BASEDIR}/systemd/${SERVICE_NAME}.service"
 SERVICE_PATH="/etc/systemd/system/${SERVICE_NAME}.service"
 
-cp "${SRC_BIN_PATH}" "${BIN_PATH}"
+mkdir -p "/var/lib/openstack-networkd"
+
+cp -f "${SRC_BIN_PATH}" "${BIN_PATH}"
 chmod +x "${BIN_PATH}"
 
-cp "${SRC_SERVICE_PATH}" "${SERVICE_PATH}"
+cp -f "${SRC_SERVICE_PATH}" "${SERVICE_PATH}"
 chmod 644 "${SERVICE_PATH}"
 
 systemctl enable "${SERVICE_NAME}"
