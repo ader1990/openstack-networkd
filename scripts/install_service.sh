@@ -4,9 +4,9 @@ set -xe
 BASEDIR=$(dirname $0)
 
 SERVICE_NAME="openstack-networkd"
-SRC_BIN_PATH="${BASEDIR}/src/openstack-networkd.sh"
+SRC_BIN_PATH="${BASEDIR}/../src/openstack-networkd.sh"
 BIN_PATH="/usr/local/bin/openstack-networkd.sh"
-SRC_SERVICE_PATH="${BASEDIR}/systemd/${SERVICE_NAME}.service"
+SRC_SERVICE_PATH="${BASEDIR}/../systemd/${SERVICE_NAME}.service"
 SERVICE_PATH="/etc/systemd/system/${SERVICE_NAME}.service"
 
 mkdir -p "/var/lib/openstack-networkd"
