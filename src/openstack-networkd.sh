@@ -6,7 +6,7 @@ LOG_FILE="${ROOT_DIR}/openstack-networkd.log"
 
 function write_log {
     curr_date=$(date '+%Y-%m-%d %H:%M:%S')
-    echo "${curr_date}: ${1}" > $LOG_FILE
+    echo "${curr_date}: ${1}" >> $LOG_FILE
 }
 
 
