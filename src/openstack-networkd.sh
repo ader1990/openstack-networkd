@@ -22,7 +22,7 @@ function write_log_error {
 
 function write_log {
     curr_date=$(date '+%Y-%m-%d %H:%M:%S')
-    msg="${curr_date}: OpenStack Networkd (${2}): ${1}"
+    msg="${curr_date}: OpenStack Networkd (action:${ACTION}, ${2}): ${1}"
     echo "${msg}" >> $LOG_FILE
 
     if [[ "${2}" == "info" || "${2}" == "error" ]]; then
@@ -46,8 +46,8 @@ EOM
     max_retries=10
     while :
     do
-        cloud-init init
-        cloud-init status
+        /usr/bin/cloud-init init
+        /usr/bin/cloud-init status
         if [ $? -eq 0 ]; then
             write_log_info "Cloud-init ran successfully"
             break
@@ -63,40 +63,60 @@ EOM
         fi
     done
 
-    netplan apply || true
-    service networking restart || true
+    /usr/sbin/netplan apply || true
+    /usr/sbin/service networking restart || true
 }
 
 
 touch "${OLD_NETWORK_DATA}"
 touch "${NETWORK_DATA}"
 
-while :
-do
-    write_log_debug "Polling for updated network data..."
+function run_as_service {
+    while :
+    do
+        write_log_debug "Polling for updated network data..."
 
-    curl --connect-timeout 10 -s "${MAGIC_URL}" -o "${NETWORK_DATA}"
+        curl_out=$(/usr/bin/curl --connect-timeout 10 -s "${MAGIC_URL}" -o "${NETWORK_DATA}" 2>&1)
+        if [ $? -ne 0 ]; then
+            write_log_error "Curl exited unsuccessfully: ${curl_out}"
+            exit 1
+        fi
 
-    net_data_json=$(jq --sort-keys . "${NETWORK_DATA}")
-    old_net_data_json=$(jq --sort-keys . "${OLD_NETWORK_DATA}")
+        net_data_json=$(jq --sort-keys . "${NETWORK_DATA}")
+        old_net_data_json=$(jq --sort-keys . "${OLD_NETWORK_DATA}")
 
-    if [[ "${net_data_json}" != "" ]]; then
-        if [[ "${net_data_json}" == "${old_net_data_json}" ]]; then
-            write_log_debug "Network data is the same"
-        else
-            write_log_debug "New network data: ${net_data_json}"
+        if [[ "${net_data_json}" != "" ]]; then
+            if [[ "${net_data_json}" == "${old_net_data_json}" ]]; then
+                write_log_debug "Network data is the same"
+            else
+                write_log_debug "New network data: ${net_data_json}"
 
-            cp -f "${NETWORK_DATA}" "${OLD_NETWORK_DATA}"
-            if [[ "${old_net_data_json}" != "" ]]; then
-                if [ ${#old_net_data_json} -gt ${#net_data_json} ]; then
-                    write_log_info "Less network information received"
-                else
-                    write_log_info "More network information received"
+                cp -f "${NETWORK_DATA}" "${OLD_NETWORK_DATA}"
+                if [[ "${old_net_data_json}" != "" ]]; then
+                    if [ ${#old_net_data_json} -gt ${#net_data_json} ]; then
+                        write_log_info "Less network information received"
+                    else
+                        write_log_info "More network information received"
+                    fi
+                    rerun_cloudinit
                 fi
-                rerun_cloudinit
             fi
         fi
-    fi
 
-    sleep 5
-done
+        sleep 5
+    done
+}
+
+function run_as_udev {
+    write_log_debug "Polling for updated network data..."
+
+    curl_out=$(/usr/bin/curl --connect-timeout 10 -s "${MAGIC_URL}" -o "${NETWORK_DATA}" 2>&1)
+
+    if [ $? -ne 0 ]; then
+        write_log_error "Curl exited unsuccessfully: ${curl_out}"
+        exit 1
+    fi
+}
+
+
+run_as_udev
