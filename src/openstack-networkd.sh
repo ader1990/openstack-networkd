@@ -6,7 +6,7 @@ MAGIC_URL="http://169.254.169.254/openstack/latest/network_data.json"
 OLD_NETWORK_DATA="${ROOT_DIR}/old_network_data.json"
 NETWORK_DATA="${ROOT_DIR}/network_data.json"
 
-CLOUD_INIT_CONFIG_FILE="/etc/cloud/cloud.cfg.d/90_dpkg.cfg"
+CLOUD_INIT_CONFIG_FILE="/tmp/80_dpkg.cfg"
 
 function write_log_info {
     write_log "${1}" "info"
@@ -38,16 +38,17 @@ datasource:
     apply_network_config: True
 datasource_list:
   - OpenStack
+system_info:
+  paths:
+    cloud_dir: "/var/lib/cloud-openstack"
 EOM
-    rm -rf "/run/cloud-init"
-    cloud-init clean --logs
+    cloud-init --file "${CLOUD_INIT_CONFIG_FILE}" clean --logs
 
     retries=0
     max_retries=10
     while :
     do
-        cloud_init_out=$(/usr/bin/cloud-init init 2>&1)
-        /usr/bin/cloud-init status
+        cloud_init_out=$(/usr/bin/cloud-init --file "${CLOUD_INIT_CONFIG_FILE}" init 2>&1)
         if [ $? -eq 0 ]; then
             write_log_info "Cloud-init ran successfully"
             break
