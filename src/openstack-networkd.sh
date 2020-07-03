@@ -82,8 +82,16 @@ function run_as_service {
             exit 1
         fi
 
-        net_data_json=$(jq --sort-keys . "${NETWORK_DATA}")
-        old_net_data_json=$(jq --sort-keys . "${OLD_NETWORK_DATA}")
+        net_data_json=$(/usr/bin/jq --sort-keys . "${NETWORK_DATA}")
+        if [ $? -ne 0 ]; then
+            write_log_error "jq failed to parse net_data_json"
+            exit 1
+        fi
+        old_net_data_json=$(/usr/bin/jq --sort-keys . "${OLD_NETWORK_DATA}")
+        if [ $? -ne 0 ]; then
+            write_log_error "jq failed to parse old_net_data_json"
+            exit 1
+        fi
 
         if [[ "${net_data_json}" != "" ]]; then
             if [[ "${net_data_json}" == "${old_net_data_json}" ]]; then
@@ -108,14 +116,7 @@ function run_as_service {
 }
 
 function run_as_udev {
-    write_log_debug "Polling for updated network data..."
-
-    curl_out=$(/usr/bin/curl --connect-timeout 10 -s "${MAGIC_URL}" -o "${NETWORK_DATA}" 2>&1)
-
-    if [ $? -ne 0 ]; then
-        write_log_error "Curl exited unsuccessfully: ${curl_out}"
-        exit 1
-    fi
+    rerun_cloudinit
 }
 
 
