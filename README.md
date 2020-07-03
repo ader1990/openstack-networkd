@@ -62,7 +62,10 @@ The udev rules would look like this:
 ```bash
 # file /etc/udev/rules.d/70-persistent-net.rules
 
-SUBSYSTEM=="net", ACTION=="add", DRIVERS=="?*", RUN+="/bin/bash /usr/local/bin/openstack-networkd.sh add"
-SUBSYSTEM=="net", ACTION=="remove", DRIVERS=="?*", RUN+="/bin/bash /usr/local/bin/openstack-networkd.sh remove"
+ACTION=="add", SUBSYSTEMS=="net", RUN+="/root/openstack-networkd/src/openstack-networkd.sh"
+ACTION=="remove", SUBSYSTEMS=="net", RUN+="/root/openstack-networkd/src/openstack-networkd.sh"
+
+udevadm control --reload-rules
+
 ```
 

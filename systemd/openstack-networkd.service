@@ -11,10 +11,6 @@ WorkingDirectory=/var/lib/openstack-networkd
 PermissionsStartOnly=true
 ExecStartPre=/bin/mkdir -p /var/lib/openstack-networkd
 ExecStart=/bin/bash /usr/local/bin/openstack-networkd.sh
-Restart=always
-TimeoutStopSec=15
-RestartSec=1
-StartLimitBurst=5
 
 [Install]
 WantedBy=multi-user.target

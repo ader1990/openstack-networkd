@@ -24,4 +24,4 @@ cp -f "${SRC_SERVICE_PATH}" "${SERVICE_PATH}"
 chmod 644 "${SERVICE_PATH}"
 
 systemctl enable "${SERVICE_NAME}"
-systemctl start "${SERVICE_NAME}"
+# systemctl start "${SERVICE_NAME}"

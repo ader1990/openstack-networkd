@@ -72,7 +72,7 @@ mkdir -p "${ROOT_DIR}"
 touch "${OLD_NETWORK_DATA}"
 touch "${NETWORK_DATA}"
 
-function run_as_service {
+function run_as_poll_service {
     while :
     do
         write_log_debug "Polling for updated network data..."
@@ -116,9 +116,8 @@ function run_as_service {
     done
 }
 
-function run_as_udev {
+function run_as_udev_service {
     rerun_cloudinit
 }
 
-
-run_as_udev
+run_as_udev_service
