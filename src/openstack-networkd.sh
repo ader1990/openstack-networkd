@@ -68,6 +68,7 @@ EOM
 }
 
 
+mkdir -p "${ROOT_DIR}"
 touch "${OLD_NETWORK_DATA}"
 touch "${NETWORK_DATA}"
 
