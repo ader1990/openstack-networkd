@@ -46,13 +46,13 @@ EOM
     max_retries=10
     while :
     do
-        /usr/bin/cloud-init init
+        cloud_init_out=$(/usr/bin/cloud-init init 2>&1)
         /usr/bin/cloud-init status
         if [ $? -eq 0 ]; then
             write_log_info "Cloud-init ran successfully"
             break
         else
-            write_log_error "Cloud-init exited unsuccessfully"
+            write_log_error "Cloud-init exited unsuccessfully: ${cloud_init_out}"
         fi
 
         ((retries=retries+1))
