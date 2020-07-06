@@ -22,7 +22,7 @@ function write_log_error {
 
 function write_log {
     curr_date=$(date '+%Y-%m-%d %H:%M:%S')
-    msg="${curr_date}: OpenStack Networkd (action:${ACTION}, ${2}): ${1}"
+    msg="${2}: openstack-networkd: ${curr_date}: ${1}"
     echo "${msg}" >> $LOG_FILE
 
     if [[ "${2}" == "info" || "${2}" == "error" ]]; then
