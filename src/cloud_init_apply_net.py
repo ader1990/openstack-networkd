@@ -45,8 +45,19 @@ def retry_decorator(max_retry_count=5, sleep_time=5):
     return wrapper
 
 
+def is_cloud_init_running():
+    try:
+        return util.subp(["ps", "--no-headers", "-fC", "cloud-init"])
+    except Exception:
+        pass
+
+
 @retry_decorator()
 def set_network_config():
+
+    if is_cloud_init_running():
+        raise Exception("Cloud-Init is running")
+
     init = stages.Init()
     init.read_cfg()
 
