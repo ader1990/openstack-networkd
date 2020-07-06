@@ -121,4 +121,13 @@ function run_as_udev_service {
     rerun_cloudinit
 }
 
-run_as_udev_service
+function run_as_cloud_init_wrapper {
+  "/usr/bin/python3" "/usr/local/bin/cloud_init_apply_net.py"
+  if [ $? -ne 0 ]; then
+      write_log_error "Failed to set networking using cloud init wrapper failed"
+  else
+      write_log_info "Cloud init wrapper set the networking config"
+  fi
+}
+
+run_as_cloud_init_wrapper
