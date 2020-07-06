@@ -45,7 +45,7 @@ def retry_decorator(max_retry_count=5, sleep_time=5):
     return wrapper
 
 
-@retry_decorator
+@retry_decorator()
 def set_network_config():
     init = stages.Init()
     init.read_cfg()
