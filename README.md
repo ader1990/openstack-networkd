@@ -60,12 +60,11 @@ triggers the network update.
 The udev rules would look like this:
 
 ```bash
-# file /etc/udev/rules.d/70-persistent-net.rules
+# file /etc/udev/rules.d/90-openstack-networkd.rules
 
 ACTION=="add", SUBSYSTEMS=="net", RUN+="/bin/systemctl start openstack-networkd"
 ACTION=="remove", SUBSYSTEMS=="net", RUN+="/bin/systemctl start openstack-networkd"
 
 udevadm control --reload-rules
-
 ```
 
