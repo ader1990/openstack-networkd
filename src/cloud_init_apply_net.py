@@ -82,10 +82,14 @@ def set_network_config():
         init.distro.apply_network_config_names(netcfg)
         init.distro.apply_network_config(netcfg, bring_up=True)
 
+        netplan_apply_succes = False
         # required on Ubuntu 18.04
-        # util.subp(["netplan", "apply"])
-        # required on Ubuntu 14.04 or 16.04
-        # util.subp(["service", "networking", "restart"])
+        try:
+            util.subp(["netplan", "apply"])
+            return
+        except Exception:
+            pass
 
+        util.subp(["service", "networking", "restart"])
 
 set_network_config()
