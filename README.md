@@ -52,7 +52,15 @@ bash openstack-networkd/scripts/install_service.sh
 
 # Notes
 
-For Ubuntu 14.04:
+The udev approach will make unintended changes outside of the "change ip" functionality.
+
+The udev "remove" event triggers before the metadata gets updated and this needs special attention.
+
+The udev "add" event always triggers after the metadata gets updated. This is an assumption
+as far as the tests went, but this does not mean it can get triggered after
+if the metadata service is slower.
+
+For Ubuntu 14.04 Trusty and Debian 8 Jessie:
 
   * set on the nova-compute nodes, in the nova.conf: flat_injected = true, so that the metadata will contain the legacy
     network information in Debian format.
@@ -64,4 +72,5 @@ For Ubuntu 14.04:
     comes for eth(N-1)
   * it cannot use the newer cloud-init version with latest metadata, as its kernel does not support
     consistent network device naming.
+
 

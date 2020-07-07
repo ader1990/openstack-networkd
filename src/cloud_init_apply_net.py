@@ -109,6 +109,9 @@ def set_network_config():
         net_cfg_raw = try_read_url(LEGACY_MAGIC_URL)
         init.distro.apply_network(net_cfg_raw, bring_up=True)
     else:
+        # if init.distro.name == "debian":
+        #     try_reset_network()
+
         net_cfg_raw = try_read_url(MAGIC_URL)
         net_cfg_raw = json.loads(net_cfg_raw)
         netcfg = openstack.convert_net_json(net_cfg_raw)
