@@ -62,12 +62,16 @@ def set_network_config():
     init = stages.Init()
     init.read_cfg()
 
-    # not available on Ubuntu Trusty (v0.7.5)
-    if logging.setupLogging:
-        logging.setupLogging(init.cfg)
+    logging.setupLogging(init.cfg)
 
-    uses_old_interfaces_file = False
-    if uses_old_interfaces_file:
+    use_legacy_networking = False
+    try:
+        openstack.convert_net_json
+        init.distro.apply_network_config
+    except AttributeError:
+        use_legacy_networking = True
+
+    if use_legacy_networking:
         # old network interfaces files in Debian format
         # required on Ubuntu 14.04, as cloud-init does not
         # know about v2 metadata.
