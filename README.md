@@ -52,11 +52,16 @@ bash openstack-networkd/scripts/install_service.sh
 
 # Notes
 
-For Ubuntu 14.04, set on the nova-compute nodes, in the nova.conf: flat_injected = true, so that the metadata will contain the legacy
-network information in Debian format.
+For Ubuntu 14.04:
 
-On Ubuntu 14.04, the interfaces file provided by OpenStack does not contain MTU information.
-As a consequence, if the underlying OpenStack network has a smaller MTU, big packets protocols like ssh do not work.
-To change that, on the nova-compute nodes, add a line with the MTU to the network interface template:
-/usr/lib/python2.7/dist-packages/nova/virt/interfaces.template
+  * set on the nova-compute nodes, in the nova.conf: flat_injected = true, so that the metadata will contain the legacy
+    network information in Debian format.
+  * the interfaces file provided by OpenStack does not contain MTU information.
+    As a consequence, if the underlying OpenStack network has a smaller MTU, big packets protocols like ssh do not work.
+    To change that, on the nova-compute nodes, add a line with the MTU to the network interface template:
+    /usr/lib/python2.7/dist-packages/nova/virt/interfaces.template
+  * a reboot is required, as the network device is called eth(N) and the metadata information
+    comes for eth(N-1)
+  * it cannot use the newer cloud-init version with latest metadata, as its kernel does not support
+    consistent network device naming.
 

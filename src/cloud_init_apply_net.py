@@ -52,6 +52,33 @@ def is_cloud_init_running():
     except Exception:
         pass
 
+def try_reset_network():
+    # required on Ubuntu 18.04
+    try:
+        util.subp(["netplan", "apply"])
+        return
+    except Exception:
+        pass
+
+    try:
+        util.subp(["service", "networking", "restart"])
+    except Exception:
+        pass
+
+
+def try_read_url(url, reset_net=True):
+    try:
+        raw_data = url_helper.readurl(url).contents
+    except Exception:
+        if reset_net:
+            try_reset_network()
+            raw_data = url_helper.readurl(url).contents
+
+    if type(raw_data) is bytes:
+        raw_data = raw_data.decode()
+
+    return raw_data
+
 
 @retry_decorator()
 def set_network_config():
@@ -79,27 +106,17 @@ def set_network_config():
         # on compute node, in nova.conf:
         # [DEFAULT}
         # flat_injected = True
-        net_cfg_raw = url_helper.readurl(LEGACY_MAGIC_URL).contents
-        if type(net_cfg_raw) is bytes:
-            net_cfg_raw = net_cfg_raw.decode()
+        net_cfg_raw = try_read_url(LEGACY_MAGIC_URL)
         init.distro.apply_network(net_cfg_raw, bring_up=True)
     else:
-        net_cfg_raw = url_helper.readurl(MAGIC_URL).contents
-        if type(net_cfg_raw) is bytes:
-            net_cfg_raw = net_cfg_raw.decode()
+        net_cfg_raw = try_read_url(MAGIC_URL)
         net_cfg_raw = json.loads(net_cfg_raw)
         netcfg = openstack.convert_net_json(net_cfg_raw)
 
         init.distro.apply_network_config_names(netcfg)
         init.distro.apply_network_config(netcfg, bring_up=True)
 
-        # required on Ubuntu 18.04
-        try:
-            util.subp(["netplan", "apply"])
-            return
-        except Exception:
-            pass
+        try_reset_network()
 
-        util.subp(["service", "networking", "restart"])
 
 set_network_config()
