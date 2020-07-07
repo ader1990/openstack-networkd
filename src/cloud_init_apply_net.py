@@ -68,11 +68,11 @@ def try_reset_network():
 
 def try_read_url(url, reset_net=True):
     try:
-        raw_data = url_helper.readurl(url).contents
+        raw_data = url_helper.readurl(url, timeout=3, retries=3).contents
     except Exception:
         if reset_net:
             try_reset_network()
-            raw_data = url_helper.readurl(url).contents
+            raw_data = url_helper.readurl(url, timeout=3, retries=3).contents
 
     if type(raw_data) is bytes:
         raw_data = raw_data.decode()
