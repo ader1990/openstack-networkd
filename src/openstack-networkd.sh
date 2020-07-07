@@ -122,12 +122,24 @@ function run_as_udev_service {
 }
 
 function run_as_cloud_init_wrapper {
-  "/usr/bin/python3" "/usr/local/bin/cloud_init_apply_net.py"
-  if [ $? -ne 0 ]; then
-      write_log_error "Failed to set networking using cloud init wrapper failed"
-  else
-      write_log_info "Cloud init wrapper set the networking config"
-  fi
+    python_path=$(which "python3")
+    "${python_path}" -c 'import cloudinit'
+    if [ $? -ne 0 ]; then
+        write_log_info "Cloud-init is not installed as a ${python_path} package"
+        python_path=$(which "python2" || which "python")
+        "${python_path}" -c 'import cloudinit'
+        if [ $? -ne 0 ]; then
+            write_log_error "Cloud-init is not installed as a ${python_path} package"
+            exit 1
+        fi
+    fi
+
+    "${python_path}" "/usr/local/bin/cloud_init_apply_net.py"
+    if [ $? -ne 0 ]; then
+        write_log_error "Failed to set networking using cloud init wrapper"
+    else
+        write_log_info "Cloud init wrapper set the networking config"
+    fi
 }
 
 run_as_cloud_init_wrapper

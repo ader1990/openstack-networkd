@@ -23,6 +23,7 @@ from cloudinit import util
 from cloudinit.sources.helpers import openstack
 
 MAGIC_URL = "http://169.254.169.254/openstack/latest/network_data.json"
+LEGACY_MAGIC_URL = "http://169.254.169.254/openstack/content/0000"
 
 
 def retry_decorator(max_retry_count=5, sleep_time=5):
@@ -67,11 +68,17 @@ def set_network_config():
 
     uses_old_interfaces_file = False
     if uses_old_interfaces_file:
-        # old network interfaces files in debian format
+        # old network interfaces files in Debian format
         # required on Ubuntu 14.04, as cloud-init does not
-        # know about v2 metadata
-        net_cfg = ''
-        init.distro.apply_network(net_cfg)
+        # know about v2 metadata.
+        # Legacy network metadata appears only if
+        # on compute node, in nova.conf:
+        # [DEFAULT}
+        # flat_injected = True
+        net_cfg_raw = url_helper.readurl(LEGACY_MAGIC_URL).contents
+        if type(net_cfg_raw) is bytes:
+            net_cfg_raw = net_cfg_raw.decode()
+        init.distro.apply_network(net_cfg_raw, bring_up=True)
     else:
         net_cfg_raw = url_helper.readurl(MAGIC_URL).contents
         if type(net_cfg_raw) is bytes:
@@ -82,7 +89,6 @@ def set_network_config():
         init.distro.apply_network_config_names(netcfg)
         init.distro.apply_network_config(netcfg, bring_up=True)
 
-        netplan_apply_succes = False
         # required on Ubuntu 18.04
         try:
             util.subp(["netplan", "apply"])

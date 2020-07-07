@@ -19,8 +19,8 @@ systemctl disable "${SERVICE_NAME}" || true
 
 
 cat > "${UDEV_RULES_FILE}" <<- EOM
-ACTION=="add", SUBSYSTEMS=="net", RUN+="/bin/systemctl start openstack-networkd"
-ACTION=="remove", SUBSYSTEMS=="net", RUN+="/bin/systemctl start openstack-networkd"
+ACTION=="add", SUBSYSTEMS=="net", RUN+="/usr/sbin/service openstack-networkd start"
+ACTION=="remove", SUBSYSTEMS=="net", RUN+="/usr/sbin/service openstack-networkd start"
 EOM
 
 udevadm control --reload-rules
