@@ -14,25 +14,25 @@ UPSTART_SERVICE_FILE="${BASEDIR}/openstack-networkd.conf"
 UDEV_RULES_FILE="/etc/udev/rules.d/90-openstack-networkd.rules"
 
 is_upstart="false"
-which initctl
+which initctl > /dev/null
 if [ $? -eq 0 ]; then
     is_upstart="true"
 fi
 
 is_systemd="false"
-which systemctl
+which systemctl > /dev/null
 if [ $? -eq 0 ]; then
     is_systemd="true"
 fi
 
+service "${SERVICE_NAME}" stop 2>&1 > /dev/null
+
 if [[ "${is_upstart}" == "true" ]]; then
-    service "${SERVICE_NAME}" stop
     cp -f "${UPSTART_SERVICE_FILE}" "${UPSTART_CONF_DIR}"
 fi
 
 if [[ "${is_systemd}" == "true" ]]; then
-    systemctl stop "${SERVICE_NAME}" || true
-    systemctl disable "${SERVICE_NAME}" || true
+    systemctl disable "${SERVICE_NAME}" 2>&1 > /dev/null || true
 fi
 
 cat > "${UDEV_RULES_FILE}" <<- EOM
