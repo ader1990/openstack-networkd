@@ -36,7 +36,6 @@ The udev -> service -> bash wrapper -> Python wrapper has been chosen because:
 
 # Dependencies for Linux:
 
-  * systemd
   * cloud-init
 
 # Userdata example for Ubuntu 18.04
@@ -50,3 +49,14 @@ git clone https://github.com/ader1990/openstack-networkd
 bash openstack-networkd/scripts/install_service.sh
 
 ```
+
+# Notes
+
+For Ubuntu 14.04, set on the nova-compute nodes, in the nova.conf: flat_injected = true, so that the metadata will contain the legacy
+network information in Debian format.
+
+On Ubuntu 14.04, the interfaces file provided by OpenStack does not contain MTU information.
+As a consequence, if the underlying OpenStack network has a smaller MTU, big packets protocols like ssh do not work.
+To change that, on the nova-compute nodes, add a line with the MTU to the network interface template:
+/usr/lib/python2.7/dist-packages/nova/virt/interfaces.template
+

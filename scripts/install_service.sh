@@ -1,6 +1,4 @@
 #!/bin/bash
-set -e
-
 BASEDIR=$(dirname $0)
 
 SERVICE_NAME="openstack-networkd"
@@ -10,19 +8,37 @@ BIN_PATH="/usr/local/bin/openstack-networkd.sh"
 BIN_PATH_PYTHON="/usr/local/bin/cloud_init_apply_net.py"
 SRC_SERVICE_PATH="${BASEDIR}/../systemd/${SERVICE_NAME}.service"
 SERVICE_PATH="/etc/systemd/system/${SERVICE_NAME}.service"
+UPSTART_CONF_DIR="/etc/init/"
+UPSTART_SERVICE_FILE="${BASEDIR}/openstack-networkd.conf"
 
 UDEV_RULES_FILE="/etc/udev/rules.d/90-openstack-networkd.rules"
 
+is_upstart="false"
+initctl --version
+if [ $? -ne 0 ]; then
+    is_upstart="true"
+fi
 
-systemctl stop "${SERVICE_NAME}" || true
-systemctl disable "${SERVICE_NAME}" || true
+is_systemd="false"
+systemctl --version
+if [ $? -ne 0 ]; then
+    is_systemd="true"
+fi
 
+if [[ "${is_upstart}" == "true" ]]; then
+    service "${SERVICE_NAME}" stop
+    cp -f "${UPSTART_SERVICE_FILE}" "${UPSTART_CONF_DIR}"
+fi
+
+if [[ "${is_systemd}" == "true" ]]; then
+    systemctl stop "${SERVICE_NAME}" || true
+    systemctl disable "${SERVICE_NAME}" || true
+fi
 
 cat > "${UDEV_RULES_FILE}" <<- EOM
 ACTION=="add", SUBSYSTEMS=="net", RUN+="/usr/sbin/service openstack-networkd start"
 ACTION=="remove", SUBSYSTEMS=="net", RUN+="/usr/sbin/service openstack-networkd start"
 EOM
-
 udevadm control --reload-rules
 
 mkdir -p "/var/lib/openstack-networkd"
@@ -39,5 +55,7 @@ chmod +x "${BIN_PATH_PYTHON}"
 cp -f "${SRC_SERVICE_PATH}" "${SERVICE_PATH}"
 chmod 644 "${SERVICE_PATH}"
 
-systemctl enable "${SERVICE_NAME}"
-# systemctl start "${SERVICE_NAME}"
+if [[ "${is_systemd}" == "true" ]]; then
+    systemctl enable "${SERVICE_NAME}"
+fi
+
