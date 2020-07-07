@@ -14,14 +14,14 @@ UPSTART_SERVICE_FILE="${BASEDIR}/openstack-networkd.conf"
 UDEV_RULES_FILE="/etc/udev/rules.d/90-openstack-networkd.rules"
 
 is_upstart="false"
-initctl --version
-if [ $? -ne 0 ]; then
+which initctl
+if [ $? -eq 0 ]; then
     is_upstart="true"
 fi
 
 is_systemd="false"
-systemctl --version
-if [ $? -ne 0 ]; then
+which systemctl
+if [ $? -eq 0 ]; then
     is_systemd="true"
 fi
 
