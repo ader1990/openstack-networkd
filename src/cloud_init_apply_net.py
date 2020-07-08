@@ -53,7 +53,7 @@ def is_cloud_init_running():
         pass
 
 
-def try_reset_network(distro_name):
+def try_reset_network(distro_name, reset_async=False):
     # required on Ubuntu 18.04
     try:
         util.subp(["netplan", "apply"])
@@ -67,7 +67,10 @@ def try_reset_network(distro_name):
         except Exception:
             pass
         try:
-            util.subp(["systemctl", "start", "networking", "--no-block"])
+            args = ["systemctl", "start", "networking"]
+            if reset_async:
+                args += ["--no-block"]
+            util.subp(args)
             return
         except Exception:
             pass
@@ -85,7 +88,7 @@ def try_read_url(url, distro_name, reset_net=True):
         raw_data = url_helper.readurl(url, timeout=3, retries=3).contents
     except Exception:
         if reset_net:
-            try_reset_network(distro_name)
+            try_reset_network(distro_name, reset_async=True)
             raw_data = url_helper.readurl(url, timeout=3, retries=3).contents
 
     if type(raw_data) is bytes:
@@ -130,7 +133,7 @@ def set_network_config():
         init.distro.apply_network_config_names(netcfg)
         init.distro.apply_network_config(netcfg, bring_up=True)
 
-        try_reset_network(init.distro.name)
+        try_reset_network(init.distro.name, reset_async=True)
 
 
 set_network_config()
