@@ -37,9 +37,47 @@ The udev -> service -> bash wrapper -> Python wrapper has been chosen because:
     TODO: Disable ConfigDrive's network set on reboot (as on some Ubuntu versions it tries to reset the networking, messing up with
     existing settings in netplan or /etc/network/interfaces).
 
-# Dependencies for Linux:
+# Status for the nic remove + add implementation using udev + cloud-init
 
-  * cloud-init
+Fundamental requirements:
+
+  * kernel / udev needs to support consistent device naming
+  * cloud-init needs to support network_data.json
+
+Distro status:
+
+  * Ubuntu
+    * Ubuntu 14.04 - **NO**
+      * cloud-init version 0.7.5 does not support network_data.json
+      * network_config from metadata does not have MTU
+      * kernel / udev does not support consistent network device naming (CNDN)
+      * supports add nic
+      * does not support remove nic as the network_config comes with eth<N> in order,
+        like this: eth0, eth1, eth2. If eth1 is removed by OpenStack, the network_config contains
+        information for eth0 and eth1 (eth2 info is moved to eth1 info in metadata),
+        whereas the system has eth0 and eth2.
+        Cloud-init only does copy / paste of the network_config to the interfaces file.
+        Only a reboot solves this issue because if the OS does not have udev rules for CNDN, eth2 becomes eth1 after reboot.
+    * Ubuntu 16.04
+      * cloud-init version 19.4-33 supports network_data.json
+      * kernel / udev supports CNDN
+      * supports add nic
+      * support remove nic with the following caveats:
+        * the removal of the nic needs to be done after the network config for the add event has finished.
+        * the removal of the nic removes the default route for the subnet as the nic gets detached before the
+          udev remove event and the metadata update. This leaves no way to access the metadata endpoint in this state.
+          The interfaces file at this moment contains the removed interface setting and a network reset using the networking
+          service takes a lot of time (more than 2 minutes). To overcome this issue, we can use the udev environment variables,
+          the action and nic name to maybe set the removed nic on manual and do a faster restart of the network.
+    * Ubuntu 18.04
+  * Debian
+    * Debian Jessie 8 (same as Ubuntu 14.04)
+    * Debian Stretch 9
+    * Debian Buster 10
+  * CentOS
+    * CentOS 6 (same as Ubuntu 14.04)
+    * CentOS 7
+    * CentOS 8
 
 # Userdata example for Ubuntu 18.04
 

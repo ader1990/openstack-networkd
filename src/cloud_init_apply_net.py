@@ -14,6 +14,7 @@
 
 import json
 import time
+import sys
 
 from cloudinit import log as logging
 from cloudinit import stages
@@ -98,7 +99,7 @@ def try_read_url(url, distro_name, reset_net=True):
 
 
 @retry_decorator()
-def set_network_config():
+def set_network_config(action="", id_net_name=""):
 
     if is_cloud_init_running():
         return
@@ -136,4 +137,7 @@ def set_network_config():
         try_reset_network(init.distro.name, reset_async=True)
 
 
-set_network_config()
+action = os.environ.get("ACTION", "")
+id_net_name = os.environ.get("ID_NET_NAME", "")
+
+set_network_config(action, id_net_name)
