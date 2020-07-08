@@ -84,6 +84,17 @@ def try_reset_network(distro_name, reset_async=False):
         except Exception:
             pass
 
+def set_manual_interface(interface_name):
+    # Read in the file
+    with open(interfaces_file, 'r') as file :
+      interfaces = file.read()
+
+    interfaces = interfaces.replace("iface {0} inet static" % interface_name, "{0} inet manual" % interface_name)
+
+    with open(interfaces_file, 'w') as file:
+      file.write(interfaces)
+
+    try_reset_network("debian", reset_async=True)
 
 def try_read_url(url, distro_name, reset_net=True):
     try:
@@ -128,6 +139,9 @@ def set_network_config(action="", id_net_name=""):
         net_cfg_raw = try_read_url(LEGACY_MAGIC_URL, init.distro.name)
         init.distro.apply_network(net_cfg_raw, bring_up=True)
     else:
+        if id_net_name and action == "remove":
+            set_manual_interface(id_net_name)
+
         net_cfg_raw = try_read_url(MAGIC_URL, init.distro.name)
         net_cfg_raw = json.loads(net_cfg_raw)
         netcfg = openstack.convert_net_json(net_cfg_raw)
