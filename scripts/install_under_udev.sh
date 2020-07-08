@@ -16,7 +16,8 @@ cp -f "${SRC_BIN_PATH_PYTHON}" "${BIN_PATH_PYTHON}"
 chmod +x "${BIN_PATH_PYTHON}"
 
 cat > "${UDEV_RULES_FILE}" <<- EOM
-ACTION=="add", SUBSYSTEM=="net", RUN+="/usr/sbin/service openstack-networkd start"
-ACTION=="remove", SUBSYSTEM=="net", RUN+="/usr/sbin/service openstack-networkd start"
+ACTION=="add", SUBSYSTEM=="net", RUN+="/bin/bash /usr/local/bin/openstack-networkd.sh"
+ACTION=="remove", SUBSYSTEM=="net", RUN+="/bin/bash /usr/local/bin/openstack-networkd.sh"
 EOM
+
 udevadm control --reload-rules
