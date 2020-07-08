@@ -2,26 +2,14 @@
 Agent for enforcing OpenStack network changes on the VMs.
 
 For Linux:
-  * create a service called openstack-networkd that starts src/openstack-networkd.sh
-  * create udev rules that fire on each net subsystem device add or remove to start the service
+  * create udev rules that fire on each net subsystem device add or remove to start src/openstack-networkd.sh
   * src/openstack-networkd.sh starts a python script src/cloud_init_apply_net.py
   * cloud_init_apply_net.py uses cloudinit Python package to execute only the relevant networking part
   * cloud_init_apply_net.py restarts the networking service (be it netplan, NetworkManager, networking)
 
-Supported distros:
-
-  * Ubuntu 16.04, Ubuntu 18.04
-  * CentOS 7
-
-Support for Ubuntu 14.04, Debian 7->10, CentOS 6->8 will be added in the future.
-
 The udev -> service -> bash wrapper -> Python wrapper has been chosen because:
 
   * udev events start only on device attach or detach (no overhead in polling every X seconds)
-  * Because udev runs a command in a peculiar execution env (no profile, no home, no binaries in path),
-    it is simpler to start a service which will run under user root (and this it has binaries in path, etc.)
-    cloud-init has hardcoded wrapped executables with no full path (ex: netplan, systemctl).
-    The service also helps us with running just one instance of the configuration setter.
   * bash wrapper for simplicity and extra logging. We can remove it in the future.
   * Python wrapper for cloud-init is required for two main reasons.
     First, cloud-init cannot be configured to use a custom configuration path
