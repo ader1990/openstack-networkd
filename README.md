@@ -8,7 +8,10 @@ For Linux:
   * cloud_init_apply_net.py uses cloudinit Python package to execute only the relevant networking part
   * cloud_init_apply_net.py restarts the networking service (be it netplan, NetworkManager, networking)
 
-Currently supports Ubuntu 16.04 or higher with netplan or networking service installed.
+Supported distros:
+
+  * Ubuntu 16.04, Ubuntu 18.04
+  * CentOS 7
 
 Support for Ubuntu 14.04, Debian 7->10, CentOS 6->8 will be added in the future.
 
@@ -60,7 +63,7 @@ The udev "add" event always triggers after the metadata gets updated. This is an
 as far as the tests went, but this does not mean it can get triggered after
 if the metadata service is slower.
 
-For Ubuntu 14.04 Trusty, Debian 8 Jessie, CentOS 6.x:
+Unsupported distros: Ubuntu 14.04 Trusty, Debian 8 Jessie, CentOS 6. The reasons are:
 
   * set on the nova-compute nodes, in the nova.conf: flat_injected = true, so that the metadata will contain the legacy
     network information in Debian format.
@@ -72,5 +75,11 @@ For Ubuntu 14.04 Trusty, Debian 8 Jessie, CentOS 6.x:
     comes for eth(N-1)
   * it cannot use the newer cloud-init version with latest metadata, as its kernel does not support
     consistent network device naming.
+
+For CentOS 7, the following issues appear with the remove / add NIC approach:
+
+    * cloud-init does not remove the ifcfg-ethX for the removed interfaces
+    * a random nameserver was set for no reason
+
 
 
