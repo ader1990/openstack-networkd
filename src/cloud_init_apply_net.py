@@ -63,11 +63,11 @@ def try_reset_network(distro_name):
 
     if distro_name == "debian" or distro_name == "ubuntu":
         try:
-            util.subp(["service", "networking", "stop"])
+            util.subp(["systemctl", "stop", "networking"])
         except Exception:
             pass
         try:
-            util.subp(["service", "networking", "start"])
+            util.subp(["systemctl", "start", "networking", "--no-block"])
             return
         except Exception:
             pass
