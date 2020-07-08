@@ -122,6 +122,54 @@ function run_as_udev_service {
 }
 
 function run_as_cloud_init_wrapper {
+    LOCK_FILE_REMOVE="/tmp/cloud_init_wrapper_remove"
+    LOCK_FILE_ADD="/tmp/cloud_init_wrapper_add"
+    CURRENT_LOCK_FILE="/tmp/cloud_init_wrapper_${ACTION}"
+
+
+    if [[ "${ACTION}" == "" ]]; then
+        write_log_info "ACTION variable is not set, not running under udev."
+    else
+        export PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin
+        write_log_info "Running on nic ${ACTION}. Checking if another action is running..."
+
+        retries=0
+        max_retries=10
+        while :
+        do
+            running_action=""
+
+
+            if [[ "${ACTION}" == "remove" ]]; then
+                if [ -e "${LOCK_FILE_ADD}" ]; then
+                    running_action="add"
+                else
+                    break
+                fi
+            fi
+
+            if [[ "${ACTION}" == "add" ]]; then
+                if [ -e "${LOCK_FILE_REMOVE}" ]; then
+                    running_action="remove"
+                else
+                    break
+                fi
+                running_action="remove"
+            fi
+
+            ((retries=retries+1))
+            if [ $retries -eq $max_retries ]; then
+                write_log_error "Lock file for action ${running_action} still present."
+                exit 1
+            fi
+
+            write_log_info "Action ${running_action} still running. Waiting..."
+
+            sleep 5
+        done
+    fi
+
+    touch "${CURRENT_LOCK_FILE}"
     python_path=$(which "python3")
     "${python_path}" -c 'import cloudinit'
     if [ $? -ne 0 ]; then
@@ -130,6 +178,7 @@ function run_as_cloud_init_wrapper {
         "${python_path}" -c 'import cloudinit'
         if [ $? -ne 0 ]; then
             write_log_error "Cloud-init is not installed as a ${python_path} package"
+            rm -f "${CURRENT_LOCK_FILE}" || true
             exit 1
         fi
     fi
@@ -140,6 +189,8 @@ function run_as_cloud_init_wrapper {
     else
         write_log_info "Cloud init wrapper set the networking config"
     fi
+
+    rm -f "${CURRENT_LOCK_FILE}" || true
 }
 
 run_as_cloud_init_wrapper

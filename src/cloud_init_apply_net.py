@@ -84,7 +84,7 @@ def try_read_url(url, reset_net=True):
 def set_network_config():
 
     if is_cloud_init_running():
-        raise Exception("Cloud-Init is running")
+        return
 
     init = stages.Init()
     init.read_cfg()
