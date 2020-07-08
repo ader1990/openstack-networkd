@@ -36,8 +36,8 @@ if [[ "${is_systemd}" == "true" ]]; then
 fi
 
 cat > "${UDEV_RULES_FILE}" <<- EOM
-ACTION=="add", SUBSYSTEMS=="net", RUN+="/usr/sbin/service openstack-networkd start"
-ACTION=="remove", SUBSYSTEMS=="net", RUN+="/usr/sbin/service openstack-networkd start"
+ACTION=="add", SUBSYSTEM=="net", RUN+="/usr/sbin/service openstack-networkd start"
+ACTION=="remove", SUBSYSTEM=="net", RUN+="/usr/sbin/service openstack-networkd start"
 EOM
 udevadm control --reload-rules
 

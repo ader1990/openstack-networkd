@@ -173,11 +173,11 @@ function run_as_cloud_init_wrapper {
     python_path=$(which "python3")
     "${python_path}" -c 'import cloudinit'
     if [ $? -ne 0 ]; then
-        write_log_info "Cloud-init is not installed as a ${python_path} package"
+        write_log_info "Cloud-init is not installed as a python3 package"
         python_path=$(which "python2" || which "python")
         "${python_path}" -c 'import cloudinit'
         if [ $? -ne 0 ]; then
-            write_log_error "Cloud-init is not installed as a ${python_path} package"
+            write_log_error "Cloud-init is not installed as a python2 package"
             rm -f "${CURRENT_LOCK_FILE}" || true
             exit 1
         fi
