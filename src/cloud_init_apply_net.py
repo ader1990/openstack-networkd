@@ -89,7 +89,7 @@ def set_manual_interface(interface_name):
     with open(interfaces_file, 'r') as file:
         interfaces = file.read()
 
-    interfaces = interfaces.replace("iface {0} inet static".format(interface_name),
+    interfaces = interfaces.replace("auto {0}".format(interface_name),
                                     "allow-hotplug {0}".format(interface_name))
 
     with open(interfaces_file, 'w') as file:
