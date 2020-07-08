@@ -45,9 +45,9 @@ function run_as_cloud_init_wrapper {
         fi
     fi
 
-    "${python_path}" "/usr/local/bin/cloud_init_apply_net.py"
+    cloud_init_out=$("${python_path}" "/usr/local/bin/cloud_init_apply_net.py" 2>&1)
     if [ $? -ne 0 ]; then
-        write_log_error "Failed to set networking using cloud init wrapper"
+        write_log_error "Failed to set networking using cloud init wrapper. Error log: ${cloud_init_out}"
     else
         write_log_info "Cloud init wrapper set the networking config"
     fi
