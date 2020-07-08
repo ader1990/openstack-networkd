@@ -141,6 +141,8 @@ function run_as_cloud_init_wrapper {
 
 
             if [[ "${ACTION}" == "remove" ]]; then
+                # let's wait 10 seconds so that the metadata gets updated
+                sleep 10
                 if [ -e "${LOCK_FILE_ADD}" ]; then
                     running_action="add"
                 else
