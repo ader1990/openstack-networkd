@@ -1,5 +1,28 @@
 #!/bin/bash
 
+function write_log_info {
+    write_log "${1}" "info"
+}
+
+function write_log_debug {
+    write_log "${1}" "debug"
+}
+
+function write_log_error {
+    write_log "${1}" "error"
+}
+
+function write_log {
+    curr_date=$(date '+%Y-%m-%d %H:%M:%S')
+    msg="${2}: openstack-networkd: ${curr_date}: ${1}"
+    echo "${msg}" >> $LOG_FILE
+
+    if [[ "${2}" == "info" || "${2}" == "error" ]]; then
+        # Log to serial console
+        echo "${msg}" > /dev/ttyS0
+    fi
+}
+
 function run_as_cloud_init_wrapper {
     if [[ "${ACTION}" == "" ]]; then
         write_log_info "ACTION variable is not set, not running under udev."
