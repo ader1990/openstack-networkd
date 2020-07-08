@@ -14,7 +14,6 @@
 
 import json
 import os
-import sys
 import time
 
 from cloudinit import log as logging
@@ -84,17 +83,20 @@ def try_reset_network(distro_name, reset_async=False):
         except Exception:
             pass
 
-def set_manual_interface(interface_name):
-    # Read in the file
-    with open(interfaces_file, 'r') as file :
-      interfaces = file.read()
 
-    interfaces = interfaces.replace("iface {0} inet static" % interface_name, "{0} inet manual" % interface_name)
+def set_manual_interface(interface_name):
+    interfaces_file = "/etc/network/interfaces.d/50-cloud-init.cfg"
+    with open(interfaces_file, 'r') as file:
+        interfaces = file.read()
+
+    interfaces = interfaces.replace("iface {0} inet static" % interface_name,
+                                    "iface {0} inet manual" % interface_name)
 
     with open(interfaces_file, 'w') as file:
-      file.write(interfaces)
+        file.write(interfaces)
 
     try_reset_network("debian", reset_async=True)
+
 
 def try_read_url(url, distro_name, reset_net=True):
     try:
