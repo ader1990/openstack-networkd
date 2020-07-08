@@ -89,7 +89,7 @@ def try_read_url(url, distro_name, reset_net=True):
     except Exception:
         if reset_net:
             try_reset_network(distro_name, reset_async=True)
-            raw_data = url_helper.readurl(url, timeout=3, retries=3).contents
+            raw_data = url_helper.readurl(url, timeout=5, retries=30).contents
 
     if type(raw_data) is bytes:
         raw_data = raw_data.decode()
