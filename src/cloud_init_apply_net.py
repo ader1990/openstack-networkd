@@ -61,17 +61,23 @@ def try_reset_network(distro_name):
     except Exception:
         pass
 
-    try:
-        util.subp(["service", "networking", "restart"])
-        return
-    except Exception:
-        pass
+    if distro_name == "debian" or distro_name == "ubuntu":
+        try:
+            util.subp(["service", "networking", "stop"])
+        except Exception:
+            pass
+        try:
+            util.subp(["service", "networking", "start"])
+            return
+        except Exception:
+            pass
 
-    try:
-        util.subp(["service", "network", "restart"])
-        return
-    except Exception:
-        pass
+    if distro_name == "rhel" or distro_name == "centos":
+        try:
+            util.subp(["service", "network", "restart"])
+            return
+        except Exception:
+            pass
 
 
 def try_read_url(url, distro_name, reset_net=True):
