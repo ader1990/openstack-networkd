@@ -13,8 +13,9 @@
 #    under the License.
 
 import json
-import time
+import os
 import sys
+import time
 
 from cloudinit import log as logging
 from cloudinit import stages
