@@ -89,8 +89,8 @@ def set_manual_interface(interface_name):
     with open(interfaces_file, 'r') as file:
         interfaces = file.read()
 
-    interfaces = interfaces.replace("iface {0} inet static" % interface_name,
-                                    "iface {0} inet manual" % interface_name)
+    interfaces = interfaces.replace("iface {0} inet static".format(interface_name),
+                                    "iface {0} inet manual".format(interface_name))
 
     with open(interfaces_file, 'w') as file:
         file.write(interfaces)
