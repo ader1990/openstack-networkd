@@ -52,7 +52,8 @@ def is_cloud_init_running():
     except Exception:
         pass
 
-def try_reset_network():
+
+def try_reset_network(distro_name):
     # required on Ubuntu 18.04
     try:
         util.subp(["netplan", "apply"])
@@ -62,16 +63,23 @@ def try_reset_network():
 
     try:
         util.subp(["service", "networking", "restart"])
+        return
+    except Exception:
+        pass
+
+    try:
+        util.subp(["service", "network", "restart"])
+        return
     except Exception:
         pass
 
 
-def try_read_url(url, reset_net=True):
+def try_read_url(url, distro_name, reset_net=True):
     try:
         raw_data = url_helper.readurl(url, timeout=3, retries=3).contents
     except Exception:
         if reset_net:
-            try_reset_network()
+            try_reset_network(distro_name)
             raw_data = url_helper.readurl(url, timeout=3, retries=3).contents
 
     if type(raw_data) is bytes:
@@ -106,20 +114,17 @@ def set_network_config():
         # on compute node, in nova.conf:
         # [DEFAULT}
         # flat_injected = True
-        net_cfg_raw = try_read_url(LEGACY_MAGIC_URL)
+        net_cfg_raw = try_read_url(LEGACY_MAGIC_URL, init.distro.name)
         init.distro.apply_network(net_cfg_raw, bring_up=True)
     else:
-        # if init.distro.name == "debian":
-        #     try_reset_network()
-
-        net_cfg_raw = try_read_url(MAGIC_URL)
+        net_cfg_raw = try_read_url(MAGIC_URL, init.distro.name)
         net_cfg_raw = json.loads(net_cfg_raw)
         netcfg = openstack.convert_net_json(net_cfg_raw)
 
         init.distro.apply_network_config_names(netcfg)
         init.distro.apply_network_config(netcfg, bring_up=True)
 
-        try_reset_network()
+        try_reset_network(init.distro.name)
 
 
 set_network_config()
