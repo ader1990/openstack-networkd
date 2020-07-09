@@ -50,7 +50,7 @@ Distro status:
       * cloud-init version 19.4-33 supports network_data.json
       * kernel / udev supports CNDN
       * supports add nic
-      * support remove nic with the following caveats:
+      * supports remove nic with the following caveats:
         * the removal of the nic needs to be done after the network config for the add event has finished
         * the removal of the primary nic also removes the default route for the subnet.
           This leaves no way to access the metadata endpoint in this state.
@@ -59,6 +59,12 @@ Distro status:
           the action and nic name to set the removed nic on allow-hotplug (from auto) and do a faster restart of the network
           using ifdown / ifup.
     * Ubuntu 18.04
+      * cloud-init version 19.4-33 supports network_data.json
+      * kernel / udev supports CNDN
+      * supports add / remove nic with the following caveats:
+        * udev systemd daemon is not allowed to access IPs. IPAddressDeny=any is set in /lib/systemd/system/udev.service
+        * in the systemd udev config file, put IPAddressAllow=169.254.169.254
+        * reload udev by running 'systemctl daemon-reload && systemctl restart udev'
   * Debian
     * Debian Jessie 8 (same as Ubuntu 14.04)
     * Debian Stretch 9
@@ -107,6 +113,3 @@ For CentOS 7, the following issues appear with the remove / add NIC approach:
 
     * cloud-init does not remove the ifcfg-ethX for the removed interfaces
     * a random nameserver was set for no reason
-
-
-

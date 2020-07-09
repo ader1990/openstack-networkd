@@ -57,6 +57,11 @@ def is_cloud_init_running():
 def try_reset_network(distro_name, reset_async=False):
     # required on Ubuntu 18.04
     try:
+        util.subp(["systemctl", "restart", "systemd-networkd"])
+        return
+    except Exception:
+        pass
+    try:
         util.subp(["netplan", "apply"])
         return
     except Exception:
