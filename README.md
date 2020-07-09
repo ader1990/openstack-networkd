@@ -51,12 +51,13 @@ Distro status:
       * kernel / udev supports CNDN
       * supports add nic
       * support remove nic with the following caveats:
-        * the removal of the nic needs to be done after the network config for the add event has finished.
-        * the removal of the nic removes the default route for the subnet as the nic gets detached before the
-          udev remove event and the metadata update. This leaves no way to access the metadata endpoint in this state.
-          The interfaces file at this moment contains the removed interface setting and a network reset using the networking
+        * the removal of the nic needs to be done after the network config for the add event has finished
+        * the removal of the primary nic also removes the default route for the subnet.
+          This leaves no way to access the metadata endpoint in this state.
+          The interfaces file at this moment contains the removed interface settings and a network reset using the networking
           service takes a lot of time (more than 2 minutes). To overcome this issue, we can use the udev environment variables,
-          the action and nic name to maybe set the removed nic on manual and do a faster restart of the network.
+          the action and nic name to set the removed nic on allow-hotplug (from auto) and do a faster restart of the network
+          using ifdown / ifup.
     * Ubuntu 18.04
   * Debian
     * Debian Jessie 8 (same as Ubuntu 14.04)

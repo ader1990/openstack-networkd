@@ -100,8 +100,14 @@ def try_reset_network(distro_name, reset_async=False):
 
 def set_manual_interface(interface_name):
     interfaces_file = "/etc/network/interfaces.d/50-cloud-init.cfg"
-    with open(interfaces_file, 'r') as file:
-        interfaces = file.read()
+    interfaces = ''
+
+    try:
+        with open(interfaces_file, 'r') as file:
+            interfaces = file.read()
+    except Exception:
+        # no interfaces file, don't do anything
+        return
 
     interfaces = interfaces.replace("auto {0}".format(interface_name),
                                     "allow-hotplug {0}".format(interface_name))
