@@ -94,7 +94,7 @@ Distro status:
         into account, every network reset takes 2 minutes for each existent nic because the DHCP clients need to timeout.
       * cloud-init configdrive tries to rename the interfaces on each reboot, and has to be disabled from doing so.
       * supports add nic
-      * kernel / udev does not support consistent network device naming
+      * kernel / udev does not support consistent network device naming.
         Linux kernel supports the feature, which is on purpose disabled from grub.
       * does not support remove nic (similar to Ubuntu 14.04)
       * on reboot, interfaces get renamed to the lowest number. Ex: if eth1 is no more, eth2 becomes eth1 on reboot.
@@ -111,7 +111,7 @@ Distro status:
     * CentOS 7
       * cloud-init version 18.5 supports network_data.json
       * cloud-init does not set DNS
-      * kernel / udev does not support consistent network device naming
+      * kernel / udev does not support consistent network device naming.
         Linux kernel supports the feature, which is on purpose disabled from grub.
       * supports add nic
       * does not support remove nic
