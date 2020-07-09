@@ -29,7 +29,7 @@ The udev -> service -> bash wrapper -> Python wrapper has been chosen because:
 
 Fundamental requirements:
 
-  * kernel / udev needs to support consistent device naming
+  * kernel / udev needs to support consistent device naming (CNDN)
   * cloud-init needs to support network_data.json
 
 Distro status:
@@ -38,7 +38,7 @@ Distro status:
     * Ubuntu 14.04
       * cloud-init version 0.7.5 does not support network_data.json
       * network_config from metadata does not have MTU
-      * kernel / udev does not support consistent network device naming (CNDN)
+      * kernel / udev does not support consistent network device naming
       * supports add nic
       * does not support remove nic as the network_config comes with eth<N> info in dumb order,
         like this: eth0, eth1, eth2. If eth1 is removed by OpenStack, the network_config contains
@@ -94,7 +94,7 @@ Distro status:
         into account, every network reset takes 2 minutes for each existent nic because the DHCP clients need to timeout.
       * cloud-init configdrive tries to rename the interfaces on each reboot, and has to be disabled from doing so.
       * supports add nic
-      * kernel / udev does not support consistent network device naming (CNDN)
+      * kernel / udev does not support consistent network device naming
         Linux kernel supports the feature, which is on purpose disabled from grub.
       * does not support remove nic (similar to Ubuntu 14.04)
       * on reboot, interfaces get renamed to the lowest number. Ex: if eth1 is no more, eth2 becomes eth1 on reboot.
@@ -105,10 +105,18 @@ Distro status:
       * cloud-init version 0.7.5 does not support network_data.json
       * cloud-init rebuilds initrd on first boot
       * supports add nic
-      * kernel / udev does not support consistent network device naming (CNDN)
+      * kernel / udev does not support consistent network device naming
       * does not support remove nic (similar to Ubuntu 14.04)
       * on reboot, interfaces get renamed to the lowest number. Ex: if eth1 is no more, eth2 becomes eth1 on reboot.
     * CentOS 7
+      * cloud-init version 18.5 supports network_data.json
+      * cloud-init does not set DNS
+      * kernel / udev does not support consistent network device naming
+        Linux kernel supports the feature, which is on purpose disabled from grub.
+      * supports add nic
+      * does not support remove nic
+      * on reboot, interfaces get renamed to the lowest number. Ex: if eth1 is no more, eth2 becomes eth1 on reboot.
+      * udev created a rule for eth0, but on hot-add it doesn't create a rule for the new nic
     * CentOS 8
 
 
