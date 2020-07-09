@@ -95,7 +95,15 @@ def set_manual_interface(interface_name):
     with open(interfaces_file, 'w') as file:
         file.write(interfaces)
 
-    try_reset_network("debian", reset_async=True)
+    try:
+        util.subp(["ifdown", "--all"])
+        return
+    except Exception:
+        pass
+    try:
+        util.subp(["ifup", "--all"])
+    except Exception:
+        pass
 
 
 def try_read_url(url, distro_name, reset_net=True):
@@ -135,18 +143,20 @@ def set_network_config(action="", id_net_name=""):
         # flat_injected = True
         net_cfg_raw = try_read_url(LEGACY_MAGIC_URL, init.distro.name)
         init.distro.apply_network(net_cfg_raw, bring_up=True)
-    else:
-        if id_net_name and action == "remove":
-            set_manual_interface(id_net_name)
 
-        net_cfg_raw = try_read_url(MAGIC_URL, init.distro.name)
-        net_cfg_raw = json.loads(net_cfg_raw)
-        netcfg = openstack.convert_net_json(net_cfg_raw)
+        return
 
-        init.distro.apply_network_config_names(netcfg)
-        init.distro.apply_network_config(netcfg, bring_up=True)
+    if id_net_name and action == "remove":
+        set_manual_interface(id_net_name)
 
-        try_reset_network(init.distro.name, reset_async=True)
+    net_cfg_raw = try_read_url(MAGIC_URL, init.distro.name)
+    net_cfg_raw = json.loads(net_cfg_raw)
+    netcfg = openstack.convert_net_json(net_cfg_raw)
+
+    init.distro.apply_network_config_names(netcfg)
+    init.distro.apply_network_config(netcfg, bring_up=True)
+
+    try_reset_network(init.distro.name)
 
 
 action = os.environ.get("ACTION", "")
