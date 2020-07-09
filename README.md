@@ -35,17 +35,19 @@ Fundamental requirements:
 Distro status:
 
   * Ubuntu
-    * Ubuntu 14.04 - **NO**
+    * Ubuntu 14.04
       * cloud-init version 0.7.5 does not support network_data.json
       * network_config from metadata does not have MTU
       * kernel / udev does not support consistent network device naming (CNDN)
       * supports add nic
-      * does not support remove nic as the network_config comes with eth<N> in order,
+      * does not support remove nic as the network_config comes with eth<N> info in dumb order,
         like this: eth0, eth1, eth2. If eth1 is removed by OpenStack, the network_config contains
         information for eth0 and eth1 (eth2 info is moved to eth1 info in metadata),
         whereas the system has eth0 and eth2.
         Cloud-init only does copy / paste of the network_config to the interfaces file.
         Only a reboot solves this issue because if the OS does not have udev rules for CNDN, eth2 becomes eth1 after reboot.
+      * on reboot, interfaces get renamed to the lowest number. Ex: if eth1 is no more, eth2 becomes eth1 on reboot.
+      * on the first boot, cloud-init rebuild initramfs
     * Ubuntu 16.04
       * cloud-init version 19.4-33 supports network_data.json
       * kernel / udev supports CNDN
@@ -66,11 +68,19 @@ Distro status:
         * in the systemd udev config file, put IPAddressAllow=169.254.169.254
         * reload udev by running 'systemctl daemon-reload && systemctl restart udev'
   * Debian
-    * Debian Jessie 8 (same as Ubuntu 14.04)
+    * Debian Jessie 8 (similar to Ubuntu 14.04)
+      * cloud-init is broken - does not know to bring up interfaces correctly, as it runs ifup --all without running ifdown before :|
+        Even on manual ifdown/ifup, no nameservers are applied.
+      * cloud-init version 0.7.6 does not support network_data.json
+      * network_config from metadata does not have MTU
+      * kernel / udev does not support consistent network device naming (CNDN)
+      * supports add nic
+      * does not support remove nic (similar to Ubuntu 14.04)
+      * on reboot, interfaces get renamed to the lowest number. Ex: if eth1 is no more, eth2 becomes eth1 on reboot.
     * Debian Stretch 9
     * Debian Buster 10
   * CentOS
-    * CentOS 6 (same as Ubuntu 14.04)
+    * CentOS 6 (similar to Ubuntu 14.04)
     * CentOS 7
     * CentOS 8
 
