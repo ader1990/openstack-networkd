@@ -50,7 +50,7 @@ Distro status:
       * on the first boot, cloud-init rebuild initramfs
     * Ubuntu 16.04
       * cloud-init version 19.4-33 supports network_data.json
-      * kernel / udev supports CNDN
+      * kernel / udev supports CNDN via unique names
       * supports add nic
       * supports remove nic with the following caveats:
         * the removal of the nic needs to be done after the network config for the add event has finished
@@ -62,7 +62,7 @@ Distro status:
           using ifdown / ifup.
     * Ubuntu 18.04
       * cloud-init version 19.4-33 supports network_data.json
-      * kernel / udev supports CNDN
+      * kernel / udev supports CNDN via unique names
       * supports add / remove nic with the following caveats:
         * udev systemd daemon is not allowed to access IPs. IPAddressDeny=any is set in /lib/systemd/system/udev.service
         * in the systemd udev config file, put IPAddressAllow=169.254.169.254
@@ -89,6 +89,13 @@ Distro status:
     * Debian Buster 10
   * CentOS
     * CentOS 6 (similar to Ubuntu 14.04)
+      * first boot is slow as it tries to run dhclient on eth0
+      * cloud-init version 0.7.5 does not support network_data.json
+      * cloud-init rebuilds initrd on first boot
+      * supports add nic
+      * kernel / udev does not support consistent network device naming (CNDN)
+      * does not support remove nic (similar to Ubuntu 14.04)
+      * on reboot, interfaces get renamed to the lowest number. Ex: if eth1 is no more, eth2 becomes eth1 on reboot.
     * CentOS 7
     * CentOS 8
 
