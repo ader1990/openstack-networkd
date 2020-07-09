@@ -120,7 +120,17 @@ def set_manual_interface(interface_name):
     with open(interfaces_file, 'w') as file:
         file.write(interfaces)
 
-    try_reset_network("debian")
+    try:
+        util.subp(["ifdown", "--all"])
+        util.subp(["ifdown", "--all"])
+    except Exception:
+        pass
+    try:
+        util.subp(["ifup", "--all"])
+        util.subp(["ifup", "--all"])
+        return
+    except Exception:
+        pass
 
 
 def try_read_url(url, distro_name, reset_net=True):
