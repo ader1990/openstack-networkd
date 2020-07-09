@@ -118,6 +118,13 @@ Distro status:
       * on reboot, interfaces get renamed to the lowest number. Ex: if eth1 is no more, eth2 becomes eth1 on reboot.
       * udev created a rule for eth0, but on hot-add it doesn't create a rule for the new nic
     * CentOS 8
+      * cloud-init version 18.5 supports network_data.json
+      * kernel / udev does not support consistent network device naming.
+        Linux kernel supports the feature, which is on purpose disabled from grub.
+      * supports add nic
+      * does not support remove nic
+      * on reboot, interfaces get renamed to the lowest number. Ex: if eth1 is no more, eth2 becomes eth1 on reboot.
+      * udev created a rule for eth0, but on hot-add it doesn't create a rule for the new nic
 
 
 # Userdata example for Ubuntu 18.04
