@@ -83,10 +83,22 @@ Distro status:
         into account, every network reset takes 2 minutes for each existent nic because the DHCP clients need to timeout.
       * cloud-init configdrive tries to rename the interfaces on each reboot, and has to be disabled from doing so.
       * supports add nic
-      * kernel / udev does not support consistent network device naming (CNDN)
+      * kernel / udev does not support consistent network device naming (CNDN).
+        Linux kernel supports the feature, which is on purpose disabled from grub.
       * does not support remove nic (similar to Ubuntu 14.04)
       * on reboot, interfaces get renamed to the lowest number. Ex: if eth1 is no more, eth2 becomes eth1 on reboot.
     * Debian Buster 10
+      * cloud-init version 18.3 supports network_data.json
+      * /etc/network/interfaces comes with a predefined setting for eth0/eth1/eth2: allow-hotplug with dhcp.
+        cloud-init writes the config to /etc/network/interfaces.d/50-cloud-config.conf, but because both configs are taken
+        into account, every network reset takes 2 minutes for each existent nic because the DHCP clients need to timeout.
+      * cloud-init configdrive tries to rename the interfaces on each reboot, and has to be disabled from doing so.
+      * supports add nic
+      * kernel / udev does not support consistent network device naming (CNDN)
+        Linux kernel supports the feature, which is on purpose disabled from grub.
+      * does not support remove nic (similar to Ubuntu 14.04)
+      * on reboot, interfaces get renamed to the lowest number. Ex: if eth1 is no more, eth2 becomes eth1 on reboot.
+      * udev created a rule for eth0, but on hot-add it doesn't create a rule for the new nic
   * CentOS
     * CentOS 6 (similar to Ubuntu 14.04)
       * first boot is slow as it tries to run dhclient on eth0
@@ -98,6 +110,7 @@ Distro status:
       * on reboot, interfaces get renamed to the lowest number. Ex: if eth1 is no more, eth2 becomes eth1 on reboot.
     * CentOS 7
     * CentOS 8
+
 
 # Userdata example for Ubuntu 18.04
 
