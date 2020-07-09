@@ -62,7 +62,8 @@ def try_reset_network(distro_name, reset_async=False):
     except Exception:
         pass
 
-    if distro_name == "debian" or distro_name == "ubuntu":
+    use_ifup = True
+    if not use_ifup and (distro_name == "debian" or distro_name == "ubuntu"):
         try:
             util.subp(["systemctl", "stop", "networking"])
         except Exception:
@@ -72,6 +73,19 @@ def try_reset_network(distro_name, reset_async=False):
             if reset_async:
                 args += ["--no-block"]
             util.subp(args)
+            return
+        except Exception:
+            pass
+
+    if use_ifup and (distro_name == "debian" or distro_name == "ubuntu"):
+        try:
+            util.subp(["ifdown", "--all"])
+            util.subp(["ifdown", "--all"])
+        except Exception:
+            pass
+        try:
+            util.subp(["ifup", "--all"])
+            util.subp(["ifup", "--all"])
             return
         except Exception:
             pass
