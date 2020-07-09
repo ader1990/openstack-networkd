@@ -27,7 +27,7 @@ function run_as_cloud_init_wrapper {
     if [[ "${ACTION}" == "" ]]; then
         write_log_info "ACTION variable is not set, not running under udev."
     else
-        export PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin
+        export PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/snap/bin
         write_log_info "Running hook for event '${ACTION}' for NIC '${ID_NET_NAME}'."
         export ACTION="${ACTION}"
         export ID_NET_NAME="${ID_NET_NAME}"
