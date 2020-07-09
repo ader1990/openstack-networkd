@@ -72,12 +72,20 @@ Distro status:
       * cloud-init is broken - does not know to bring up interfaces correctly, as it runs ifup --all without running ifdown before :|
         Even on manual ifdown/ifup, no nameservers are applied.
       * cloud-init version 0.7.6 does not support network_data.json
-      * network_config from metadata does not have MTU
       * kernel / udev does not support consistent network device naming (CNDN)
       * supports add nic
       * does not support remove nic (similar to Ubuntu 14.04)
       * on reboot, interfaces get renamed to the lowest number. Ex: if eth1 is no more, eth2 becomes eth1 on reboot.
     * Debian Stretch 9
+      * cloud-init version 0.7.9 supports network_data.json
+      * /etc/network/interfaces comes with a predefined setting for eth0/eth1/eth2: allow-hotplug with dhcp.
+        cloud-init writes the config to /etc/network/interfaces.d/50-cloud-config.conf, but because both configs are taken
+        into account, every network reset takes 2 minutes for each existent nic because the DHCP clients need to timeout.
+      * cloud-init configdrive tries to rename the interfaces on each reboot, and has to be disabled from doing so.
+      * supports add nic
+      * kernel / udev does not support consistent network device naming (CNDN)
+      * does not support remove nic (similar to Ubuntu 14.04)
+      * on reboot, interfaces get renamed to the lowest number. Ex: if eth1 is no more, eth2 becomes eth1 on reboot.
     * Debian Buster 10
   * CentOS
     * CentOS 6 (similar to Ubuntu 14.04)
