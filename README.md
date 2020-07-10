@@ -177,6 +177,6 @@ Proof of Concept using PowerShell and WMI events
 Requirements:
 
   * Cloudbase-Init from https://github.com/ader1990/cloudbase-init-1/tree/fix_change_ip_quirks
-  * Start powershell src/reset-networking.ps1
-  * Custom Cloudbase-Init config from conf/cloudbase-init.conf copied to 'C:\Program Files\Cloudbase Solutions\Cloudbase-Init\ipchange\conf\cloudbase-init.conf'
-  * Custom Python notifier src/windows-notify.py copied to 'C:\Program Files\Cloudbase Solutions\Cloudbase-Init\ipchange\scripts\notify.py'
+  * Start a PowerShell script [reset-networking](src/reset-networking.ps1) under admin user
+  * Custom Cloudbase-Init config from [cloudbase-init.conf](conf/cloudbase-init.conf) copied to 'C:\Program Files\Cloudbase Solutions\Cloudbase-Init\ipchange\conf\cloudbase-init.conf'
+  * Custom Python notifier [windows-notify](src/windows-notify.py) copied to 'C:\Program Files\Cloudbase Solutions\Cloudbase-Init\ipchange\scripts\notify.py'
