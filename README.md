@@ -166,3 +166,17 @@ For CentOS 7, the following issues appear with the remove / add NIC approach:
 
     * cloud-init does not remove the ifcfg-ethX for the removed interfaces
     * a random nameserver was set for no reason
+
+
+# Windows
+
+
+Proof of Concept using PowerShell and WMI events
+
+
+Requirements:
+
+  * Cloudbase-Init from https://github.com/ader1990/cloudbase-init-1/tree/fix_change_ip_quirks
+  * Start powershell src/reset-networking.ps1
+  * Custom Cloudbase-Init config from conf/cloudbase-init.conf copied to 'C:\Program Files\Cloudbase Solutions\Cloudbase-Init\ipchange\conf\cloudbase-init.conf'
+  * Custom Python notifier src/windows-notify.py copied to 'C:\Program Files\Cloudbase Solutions\Cloudbase-Init\ipchange\scripts\notify.py'
