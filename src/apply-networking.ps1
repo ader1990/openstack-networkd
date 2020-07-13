@@ -52,6 +52,26 @@ function Execute-Retry {
     }
 }
 
+function Convert-Ipv6toDecimal {
+    param($IPv6Address)
+
+    $Ipv6AddrBytes = [System.Net.IPAddress]::Parse($Ipv6Address).GetAddressBytes();
+
+    # [BigInt[]]$BytesList =[BigInt[]]$Ipv6AddrBytes;
+    # [array]::reverse($BytesList)
+    # $Ipv6AddrBytes = $BytesList;
+
+    [BigInt]$Ipv6Number = 0
+    [BigInt[]]$BigIntArray = @(0,0)
+
+    $BigIntArray[0] += [System.BitConverter]::ToUInt64($Ipv6AddrBytes,8)
+    $BigIntArray[1] = [System.BitConverter]::ToUInt64($Ipv6AddrBytes,0)
+    $BigIntArray[0] = $BigIntArray[0] -shl 64
+    [bigint]$Ipv6Number = $BigIntArray[0] + $BigIntArray[1]
+
+    return 0
+}
+
 
 function Convert-IpAddressToPrefixLength {
     Param(
@@ -59,20 +79,19 @@ function Convert-IpAddressToPrefixLength {
     )
 
     $maskLength = 0
-    [IPAddress]$IPAddress = $IPAddress
+    [IPAddress]$IPAddressF = $IPAddress
 
-    if ($IPAddress.AddressFamily -ne "InterNetworkV6") {
-        foreach ($Octet in ($IPAddress.IPAddressToString.Split('.'))) {
+    if ($IPAddressF.AddressFamily -ne "InterNetworkV6") {
+        foreach ($Octet in ($IPAddressF.IPAddressToString.Split('.'))) {
             while ($Octet -ne 0) {
                 $Octet = ($Octet -shl 1) -band [byte]::MaxValue
                 $maskLength ++
             }
         }
-    } else {
-        $maskLength = 64
+        return $maskLength
     }
 
-    return $maskLength
+    return (Convert-Ipv6toDecimal $IPAddress)
 }
 
 
@@ -281,7 +300,7 @@ function Set-Network {
             }
             foreach ($routeToAdd in $routesToAdd) {
                 Write-Log "Adding route $($routeToAdd.for_comparison)"
-                New-NetRoute -Confirm:$false `
+                New-NetRoute -Confirm:$false -ErrorAction SilentlyContinue `
                     -DestinationPrefix $routeToAdd.initial.DestinationPrefix `
                     -NextHop $routeToAdd.initial.NextHop `
                     -AddressFamily $addressFamily -InterfaceIndex $iface.ifIndex | Out-Null
@@ -320,7 +339,6 @@ function Main {
     Set-Networks $networks
     Set-Nameservers $nameservers
 }
-
 
 # $RawNetworkConfig = Get-ExampleNetworkData -DataType "raw"
 
