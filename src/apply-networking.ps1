@@ -292,7 +292,6 @@ function Main {
 
     $networkConfig = Parse-NetworkConfig $RawNetworkConfig
 
-    Write-Log $networkConfig
     $links = $networkConfig.links
     $networks = $networkConfig.networks
     $nameservers = $networkConfig.services | Where-Object { $_.type -eq "dns" }
@@ -303,5 +302,6 @@ function Main {
 }
 
 
-$RawNetworkConfig = Get-ExampleNetworkData -DataType "raw"
+# $RawNetworkConfig = Get-ExampleNetworkData -DataType "raw"
+
 Main $RawNetworkConfig
