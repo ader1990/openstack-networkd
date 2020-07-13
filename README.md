@@ -180,3 +180,35 @@ Requirements:
   * Start a PowerShell script [reset-networking](src/reset-networking.ps1) under admin user
   * Custom Cloudbase-Init config from [cloudbase-init.conf](conf/cloudbase-init.conf) copied to 'C:\Program Files\Cloudbase Solutions\Cloudbase-Init\ipchange\conf\cloudbase-init.conf'
   * Custom Python notifier [windows-notify](src/windows-notify.py) copied to 'C:\Program Files\Cloudbase Solutions\Cloudbase-Init\ipchange\scripts\notify.py'
+
+# Windows PowerShell config setter
+
+The script [src/apply-networking](src/apply-networking.ps1) takes a base64 json OpenStack network config and applies it on the Windows machine.
+
+Capabilities:
+
+  * Link layer: rename and MTU set
+  * IP Layer: set IP, per link DNS and routes (gateway is a special route)
+  * Service layer: set global DNS
+
+TODO:
+
+  * Add full support for IPV6
+  * Add support for PowerShell on Windows 2012 R2
+
+Example:
+
+```powershell
+
+$networkConfigB64 = "eyJzZXJ2aWNlcyI6IFt7InR5cGUiOiAiZG5zIiwgImFkZHJlc3MiOiAiOC44LjguOCJ9XSwgIm5ldHdvcmtzIjogW3sibmV0d29ya19pZCI6ICI4MWQ1MjkyZS03OTBhLTRiMWEtOGRmZi1mNmRmZmVjMDY2ZmIiLCAidHlwZSI6ICJpcHY0IiwgInNlcnZpY2VzIjogW3sidHlwZSI6ICJkbnMiLCAiYWRkcmVzcyI6ICI4LjguOC44In1dLCAibmV0bWFzayI6ICIyNTUuMjU1LjI1NS4wIiwgImxpbmsiOiAidGFwODU0NDc3YzgtYmIiLCAicm91dGVzIjogW3sibmV0bWFzayI6ICIwLjAuMC4wIiwgIm5ldHdvcmsiOiAiMC4wLjAuMCIsICJnYXRld2F5IjogIjE5Mi4xNjguNS4xIn1dLCAiaXBfYWRkcmVzcyI6ICIxOTIuMTY4LjUuMTciLCAiaWQiOiAibmV0d29yazAifV0sICJsaW5rcyI6IFt7ImV0aGVybmV0X21hY19hZGRyZXNzIjogIjAwOjE1OjVEOjY0Ojk4OjYwIiwgIm10dSI6IDE0NTAsICJ0eXBlIjogIm92cyIsICJpZCI6ICJ0YXA4NTQ0NzdjOC1iYiIsICJ2aWZfaWQiOiAiODU0NDc3YzgtYmJmZS00OGY1LTg5NGQtODBmMGNkZmNjYTYwIn1dfQ=="
+
+powershell src/apply-networking.ps1 $networkConfigB64
+
+#7/13/2020 1:16:22 PM - Setting MTU 1450 for link tap854477c8-bb
+#7/13/2020 1:16:22 PM - Configuring network for link tap854477c8-bb
+#7/13/2020 1:16:22 PM - Removing route 0.0.0.0/0/192.168.5.1
+#7/13/2020 1:16:22 PM - Adding route 0.0.0.0/0/192.168.5.1
+#7/13/2020 1:16:22 PM - Setting DNSses 8.8.8.8 for interfaces aliases tap854477c8-bb
+#7/13/2020 1:16:22 PM - Setting DNSses 8.8.8.8 for interfaces aliases *
+
+```
