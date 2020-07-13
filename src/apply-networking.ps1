@@ -53,6 +53,25 @@ function Execute-Retry {
 }
 
 
+function Convert-IpAddressToPrefixLength {
+    Param(
+        $IPAddress
+    )
+
+    $maskLength = 0
+    [IPAddress]$IPv4 = $IPAddress
+
+    foreach ($Octet in ($IPv4.IPAddressToString.Split('.'))) {
+        while ($Octet -ne 0) {
+            $Octet = ($Octet -shl 1) -band [byte]::MaxValue
+            $maskLength ++
+        }
+    }
+
+    return $maskLength
+}
+
+
 function Set-InterfaceSubnets {
     [CmdletBinding()]
     Param(
@@ -149,7 +168,8 @@ function Set-Nameservers {
     [CmdletBinding()]
     Param(
         [Parameter(Mandatory=$true)]
-        $nameservers
+        $nameservers,
+        $InterfaceAlias="*"
     )
 
     PROCESS {
@@ -172,8 +192,9 @@ function Set-Nameservers {
         }
 
         if ($addresses) {
-            Write-Log "Setting global DNSses to ${addresses}"
-            Set-DnsClientServerAddress * -ServerAddresses $addresses -Confirm:$false | Out-Null
+            Write-Log "Setting DNSses ${addresses} for interfaces aliases ${InterfaceAlias}"
+            Set-DnsClientServerAddress -InterfaceAlias $InterfaceAlias `
+                -ServerAddresses $addresses -Confirm:$false | Out-Null
         }
     }
 }
@@ -253,8 +274,80 @@ function Set-Networks {
         Write-Log "Configuring network for link $($network.link)"
 
         $iface = Get-NetAdapter | Where-Object { $_.Name -eq $network.link }
-        if (!$iface -or $iface.Count -gt 1) {
+        if (!$iface -or ($iface | Measure-Object).Count -gt 1) {
             throw "No interface or multiple interfaces have been found with name $($network.link)"
+        }
+
+        if ($network.type -eq "ipv4") {
+            $ipAddress = $network.ip_address
+            $netmask = $network.netmask
+            $prefixLength = Convert-IpAddressToPrefixLength $netmask
+            $nameservers = $network.services | Where-Object { $_.type -eq "dns" }
+            $routes = $network.routes
+
+            $addIpAddress = $true
+            # Set network to static if DHCP was enabled
+            $ipInterface = Get-NetIPInterface -InterfaceIndex $iface.ifIndex -AddressFamily "IPv4"
+            if ($ipInterface.Dhcp -ne "Disabled") {
+                Set-NetIPInterface -InterfaceIndex $iface.ifIndex -Dhcp "Disabled"
+            } else {
+                # Verify if there is the need to change the IP
+                $ipAddresses = Get-NetIPAddress -InterfaceIndex $iface.ifIndex -AddressFamily "IPv4"
+                if (($ipAddresses | Measure-Object).Count -eq 1) {
+                    # Check if there is the same IP
+                    if ($ipAddresses.IPAddress -eq $ipAddress -and $ipAddresses.PrefixLength -eq $prefixLength) {
+                        $addIpAddress = $false
+                    }
+                }
+            }
+
+            if ($addIpAddress) {
+                Write-Log "Link $($network.link) has a different IP, remove it."
+                Remove-NetIPAddress -InterfaceIndex $iface.ifIndex -Confirm:$false `
+                    -ErrorAction SilentlyContinue
+                
+                Write-Log "Set new IP on Link $($network.link)."
+                New-NetIPAddress -IPAddress $ipAddress `
+                     -PrefixLength $prefixLength `
+                     -InterfaceIndex $iface.ifIndex `
+                     -AddressFamily "IPv4" `
+                     -Confirm:$false -ErrorAction "Stop" | Out-Null
+            }
+
+            if (!$routes) {
+                Write-Log "Remove all routes for link $($network.link)"
+                Remove-NetRoute -Confirm:$false -InterfaceIndex $iface.ifIndex `
+                    -ErrorAction SilentlyContinue -AddressFamily "IPv4"
+            } else {
+                $existentRoutes = Get-NetRoute -InterfaceIndex $iface.ifIndex -AddressFamily "IPv4" `
+                    -Protocol "NetMgmt"
+                $mapRoutesDesired = @()
+                $mapRoutesExistent = @()
+                foreach ($desiredRoute in $routes) {
+                    $prefixLengthR = Convert-IpAddressToPrefixLength $desiredRoute.netmask
+                    $nextHopR = $route.gateway
+                    $networkR = $route.network
+                    $mapRoutesDesired += @{
+                        "initial" = @{
+                            "DestinationPrefix" = "$networkR/$prefixLengthR";
+                            "nextHopR" = $nextHopR;
+                        };
+                        "for_comparison" = "$networkR/$prefixLengthR/$nextHopR";
+                    }
+                }
+                Write-Log $mapRoutesDesired
+                foreach ($existentRoute in $existentRoutes) {
+                    $mapRoutesExistent += @{
+                        "initial" = @{
+                            "DestinationPrefix" = $existentRoute.DestinationPrefix
+                            "nextHopR" = $existentRoute.NextHop;
+                        };
+                        "for_comparison" = $existentRoute.DestinationPrefix + "/" + $existentRoute.NextHop;
+                    }
+                }
+            }
+
+            Set-Nameservers $nameservers $network.link
         }
 
         if ($network.type -eq "ipv4_dhcp" -or $network.type -eq "ipv6_dhcp") {
