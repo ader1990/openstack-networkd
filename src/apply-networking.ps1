@@ -203,370 +203,6 @@ function Set-Nameservers {
     }
 }
 
-function Get-AdaptersFromList {
-    [CmdletBinding()]
-    Param(
-        [Parameter(Mandatory=$true)]
-        [array]$Ifaces
-    )
-    PROCESS {
-        $interfaces = Get-NetAdapter | Where-Object {$_.Name -in $Ifaces}
-        if($interfaces.Count -ne $Ifaces.Count) {
-            return
-        }
-        return $interfaces
-    }
-}
-
-function Check-NetworkConnectivity {
-    Param($TeamNicName)
-
-    $adapter = Get-NetAdapter -Name $teamNicName -ErrorAction SilentlyContinue
-    if ((!$adapter) -or ($adapter.Status -ne "Up") -or ($adapter.InterfaceOperationalStatus -ne 1) `
-        -or ($adapter.AdminStatus -ne 'Up') -or ($adapter.MediaConnectionState -ne "Connected")) {
-        throw "Bond ${bondName}: bond nic state is not up"
-    } else {
-        Write-Log "Bond ${bondName}: bond nic state is up"
-    }
-    $testConnectionServers = @("google.com", "packet.net")
-    foreach ($testConnectionServer in $testConnectionServers) {
-        Write-Log "Testing connection to server: ${testConnectionServer}"
-        $result = Test-NetConnection $testConnectionServer
-        if (!$result.PingSucceeded) {
-            throw "Failed to connect to $testConnectionServer"
-        } else {
-            Write-Log "Successfully connected to server: $testConnectionServer ($($result.RemoteAddress))"
-        }
-    }
-}
-
-function Set-BondInterfaces {
-    [CmdletBinding()]
-    Param(
-        [Parameter(Mandatory=$true)]
-        [array]$Data
-    )
-    PROCESS {
-        $haveLbfo = Get-Command *NetLbfo*
-        if (!$haveLbfo) {
-            Write-Log "NET_LBFO is not supported on this OS."
-            return
-        }
-        $required = @(
-            "name",
-            "mac_address",
-            "bond_interfaces",
-            "params"
-        )
-        foreach ($bond in $data) {
-            $bondName = "bond_" + $bond["name"]
-            $teamNicName = $bond["name"]
-            $team = try {
-                Get-NetLbfoTeam -Name $bondName -ErrorAction SilentlyContinue
-            } catch {
-                Write-Log $_
-            }
-            if ($team) {
-
-                try {
-                    Execute-Retry {
-                        Check-NetworkConnectivity $teamNicName
-                    } -MaxRetryCount 5 -RetryInterval 1
-                    continue
-                } catch {
-                    Write-Log "Bond nic ${teamNicName} does not have connectivity"
-                }
-
-                Write-Log "Trying to reset bond members"
-                try {
-                    $Ifaces = Get-AdaptersFromList $bond["bond_interfaces"]
-                    $Ifaces | Disable-NetAdapter -Confirm:$false -ErrorAction SilentlyContinue
-                    $Ifaces | Enable-NetAdapter -Confirm:$false -ErrorAction SilentlyContinue
-                    Execute-Retry {
-                        Check-NetworkConnectivity $teamNicName
-                    } -MaxRetryCount 5 -RetryInterval 1
-                    continue
-                } catch {
-                    Write-Log "Bond nic ${teamNicName} does not have connectivity"
-                }
-
-                Write-Log "Trying to reset bond nic mac address"
-                try {
-                    $Ifaces = Get-AdaptersFromList $bond["bond_interfaces"]
-                    $primary = $Ifaces | Where-Object {$_.MacAddress -eq ($bond["mac_address"] -Replace ":","-")}
-                    $bondIface = Get-NetAdapter $teamNicName
-                    if ($bondIface.MacAddress -ne $primary.MacAddress) {
-                        $registryNics = Get-childItem 'HKLM:\SYSTEM\CurrentControlSet\Control\Class\{4D36E972-E325-11CE-BFC1-08002BE10318}'`
-                            -ErrorAction SilentlyContinue
-                        $bondRegistryNic = $registryNics | Where-Object {((Get-ItemProperty -Path $_.name.Replace('HKEY_LOCAL_MACHINE\',"hklm://") `
-                            -Name "DriverDesc" -ErrorAction SilentlyContinue) | Select-Object "DriverDesc").DriverDesc `
-                            -eq 'Microsoft Network Adapter Multiplexor Driver'}
-                        New-ItemProperty -Force -Path $bondRegistryNic.Name.Replace('HKEY_LOCAL_MACHINE\',"hklm://") `
-                            -Name "NetworkAddress" -Type String -Value $primary.MacAddress.replace("-","") `
-                            -ErrorAction SilentlyContinue
-
-                        Disable-NetAdapter -Name $teamNicName -Confirm:$false -ErrorAction SilentlyContinue
-                        Enable-NetAdapter -Name $teamNicName -Confirm:$false -ErrorAction SilentlyContinue
-
-                        Execute-Retry {
-                            Check-NetworkConnectivity $teamNicName
-                        } -MaxRetryCount 5 -RetryInterval 1
-                        continue
-                    } else {
-                        Write-Log "Bond nic has the same MAC address as the primary NIC"
-                    }
-                } catch {
-                    Write-Log "Bond nic ${teamNicName} does not have connectivity"
-                }
-
-                Write-Log "Removing bond to be recreated, as all the saving steps failed"
-                $team | Remove-NetLbfoTeam -Confirm:$false
-            }
-
-            $missing = $false
-            foreach ($req in $required) {
-                if ($req -notin $bond.Keys) {
-                    $missing = $true
-                }
-            }
-            if ($missing) {
-                Write-Log "There are missing parameters in the bonding information"
-                continue
-            }
-            # get interfaces
-            $Ifaces = Get-AdaptersFromList $bond["bond_interfaces"]
-            if (!$Ifaces) {
-                Write-Log "Failed to get the bonding network adapters"
-                continue
-            }
-
-            # Enable net adapters
-            $Ifaces | Enable-NetAdapter | Out-Null
-
-            # get Primary / secondary Iface
-            $primary = $Ifaces | Where-Object {$_.MacAddress -eq ($bond["mac_address"] -Replace ":","-")}
-            if (!$primary -or !$primary.MacAddress) {
-                throw "Failed to retrieve primary interface"
-            } else {
-                Write-Log "Primary mac address for bond is: $($primary.MacAddress)"
-            }
-
-            $secondary = $Ifaces | Where-Object {
-                ($_.MacAddress -ne $primary.MacAddress) -and ($bond["bond_interfaces"] -contains $_.Name)
-            }
-            if (!$secondary -or !$secondary.MacAddress) {
-                throw "Failed to retrieve secondary interface"
-            } else {
-                Write-Log "Secondary mac address for bond is: $($secondary.MacAddress)"
-            }
-
-            # select proper mode. Default to Switch independent
-            $mode = "SwitchIndependent"
-            if ($bond["params"]["bond-mode"] -eq "802.3ad") {
-                $mode = "Lacp"
-            }
-
-            $lbAlgo = "Dynamic"
-            switch($bond["params"]["bond-xmit_hash_policy"]){
-                "layer2" {
-                    $lbAlgo = "MacAddresses"
-                }
-                "layer2+3" {
-                    $lbAlgo = "IPAddresses"
-                }
-                "layer3+4" {
-                    $lbAlgo = "TransportPorts"
-                }
-                default {
-                    $lbAlgo = "Dynamic"
-                }
-            }
-            if ($mode) {
-                Execute-Retry {
-                    Write-Log "Cleaning up bond $bondName"
-                    Get-NetLbfoTeam -Name $bondName -ErrorAction SilentlyContinue | `
-                        Remove-NetLbfoTeam -Confirm:$false
-
-                    Write-Log "Creating bond $bondName"
-                    New-NetLbfoTeam -Name $bondName `
-                                    -TeamMembers ($primary.Name) `
-                                    -TeamNicName $teamNicName `
-                                    -TeamingMode $mode `
-                                    -LoadBalancingAlgorithm $lbAlgo `
-                                    -Confirm:$false | Out-Null
-
-                    Execute-Retry {
-                        if ((Get-NetLbfoTeam -Name $bondName).Status -ne "Up") {
-                            throw "Bond ${bondName}: bond status is not up"
-                        } else {
-                            Write-Log "Bond ${bondName}: bond status is up"
-                        }
-                    } -MaxRetryCount 20 -RetryInterval 10
-
-                    Execute-Retry {
-                        $adapter = Get-NetAdapter -Name $teamNicName
-                        if (($adapter.Status -ne "Up") -or ($adapter.InterfaceOperationalStatus -ne 1) `
-                            -or ($adapter.AdminStatus -ne 'Up') -or ($adapter.MediaConnectionState -ne "Connected")) {
-                            throw "Bond ${bondName}: bond nic state is not up"
-                        } else {
-                            Write-Log "Bond ${bondName}: bond nic state is up"
-                        }
-                    } -MaxRetryCount 10 -RetryInterval 10
-
-                    Start-Sleep 10
-
-                    Add-NetLbfoTeamMember -Team $bondName `
-                                          -Name $secondary.Name `
-                                          -Confirm:$false | Out-Null
-                    Execute-Retry {
-                        $adapter = Get-NetAdapter -Name $teamNicName
-                        if (($adapter.Status -ne "Up") -or ($adapter.InterfaceOperationalStatus -ne 1) `
-                            -or ($adapter.AdminStatus -ne 'Up') -or ($adapter.MediaConnectionState -ne "Connected")) {
-                            throw "Bond ${bondName}: bond nic state is not up"
-                        } else {
-                            Write-Log "Bond ${bondName}: bond nic state is up"
-                        }
-                    } -MaxRetryCount 10 -RetryInterval 10
-                }
-            }
-
-            $bondIface = Get-NetAdapter -Name $teamNicName -ErrorAction SilentlyContinue
-            if ($bond["subnets"] -and $bond["subnets"].Count -gt 0 -and $bondIface) {
-                Execute-Retry {
-                    Set-InterfaceSubnets -Iface $bondIface -Subnets $bond["subnets"] | Out-Null
-                }
-            }
-            if($bond["mtu"]) {
-                netsh interface ipv4 set subinterface $bondName mtu=$bond["mtu"] store=persistent 2>&1 | Out-Null
-            }
-        }
-    }
-}
-
-function Set-VlanInterfaces {
-    [CmdletBinding()]
-    Param(
-        [Parameter(Mandatory=$true)]
-        [array]$Data
-    )
-    PROCESS {
-        $haveLbfo = Get-Command *NetLbfo*
-        if(!$haveLbfo) {
-            # most probably we are on a version of Nano that does not have support for this
-            return
-        }
-        foreach ($nic in $Data) {
-            $link = $nic["vlan_link"]
-            $name = $nic["name"]
-            $id = $nic["vlan_id"]
-            $linkIsBond = try { Get-NetLbfoTeam -Name $link -ErrorAction SilentlyContinue }catch {}
-            if(!$linkIsBond) {
-                # For now only VLANs set on bonds are supported
-                continue
-            }
-            $exists = Get-NetLbfoTeamNic -Name $name -Team $link -ErrorAction SilentlyContinue
-            if($exists) {
-                continue
-            }
-            Add-NetLbfoTeamNic -Team $link -Name $name -VlanID $id -Confirm:$false | Out-Null
-
-            # wait for NIC to come up
-            $count = 0
-            while($count -lt 30) {
-                $Iface = Get-NetAdapter $name -ErrorAction SilentlyContinue
-                if($Iface) {
-                    break
-                }
-                $count += 1
-                Start-Sleep 2
-            }
-            if($Iface) {
-                if($nic["subnets"] -and $nic["subnets"].Count -gt 0){
-                    Set-InterfaceSubnets -Iface $Iface -Subnets $nic["subnets"]
-                }
-                if($nic["mtu"]) {
-                    netsh interface ipv4 set subinterface $name mtu=$nic["mtu"] store=persistent 2>&1 | Out-Null
-                }
-            }
-        }
-    }
-}
-
-function Set-NetworkConfig {
-    [CmdletBinding()]
-    Param(
-        [Parameter(Mandatory=$true)]
-        [string]$NetworkConfig
-    )
-    PROCESS {
-        $data = [System.Collections.Generic.Dictionary[string, object]](New-Object "System.Collections.Generic.Dictionary[string, object]")
-        $cfg = [System.IO.File]::ReadAllText($NetworkConfig) | ConvertFrom-Json
-        if ($cfg.network) {
-            $networkInfo = $cfg.network
-            if ($networkInfo.interfaces) {
-                $data['physical'] = $networkInfo.interfaces
-                if ($networkInfo.bonding) {
-                    $data['bond'] = @()
-                    $bond = @{}
-                    $bond['bond_interfaces'] = $networkInfo.interfaces.name
-                    $bond['name'] = 'bond0'
-                    $bond['mac_address'] = $networkInfo.interfaces[0].mac
-                    $bond['params'] = @{}
-                    if ($networkInfo.bonding.mode -eq 4) {
-                        $bond['params']['bond-mode'] = "802.3ad"
-                    } elseif ($networkInfo.bonding.mode -eq 5) {
-                       $bond['params']['bond-mode'] = "tlb"
-                       $bond['name'] = $networkInfo.interfaces[0].name
-                    }
-                    if ($networkInfo.addresses) {
-                        $bond["subnets"] = @()
-                        foreach ($packetSubnet in $networkInfo.addresses) {
-                            $subnet = @{
-                                "type" = "static";
-                                "netmask" = $packetSubnet.netmask;
-                                "address" = ($packetSubnet.address + "/" + $packetSubnet.cidr);
-                                "address_family" = ("ipv" + $packetSubnet.address_family);
-                                "gateway" = $packetSubnet.gateway;
-                                "public" = $packetSubnet.public;
-                                "network" = $packetSubnet.network
-                            }
-                            $bond["subnets"]  += $subnet
-                        }
-                    }
-                    $data['bond'] += $bond
-                }
-                $data["nameserver"] = @(@{"address"="147.75.207.207"}, @{"address"="147.75.207.208"}, @{"address"="2001:4860:4860::8888"}, @{"address"="2001:4860:4860::8844"})
-            }
-        } else {
-            throw "Network configuration could not be found."
-        }
-
-        # take care of the physical devices first
-        if ($data["physical"]) {
-            Write-Log "Setting physical network adapters"
-            Set-PhysicalAdapters $data["physical"]
-        }
-
-        # take care of bonds
-        if ($data["bond"]) {
-            Write-Log "Setting bond network adapters"
-            Set-BondInterfaces $data["bond"]
-        }
-
-        # Set VLAN links. NIC teams only for now
-        if($data["vlan"]) {
-            Write-Log "Setting vlan network adapters"
-            Set-VlanInterfaces $data["vlan"]
-        }
-
-        # set nameservers
-        if ($data["nameserver"]) {
-            Write-Log "Setting nameservers"
-            Set-Nameservers $data["nameserver"]
-        }
-    }
-}
-
 
 function Get-ExampleNetworkData {
     param($DataType = "raw")
@@ -591,10 +227,40 @@ function Parse-NetworkConfig {
     $fromBase64 = [Text.Encoding]::Utf8.GetString([Convert]::FromBase64String($RawNetworkConfig))
 
     $networkConfig = $fromBase64 | ConvertFrom-Json
-    
+
     return $networkConfig
 }
 
+
+function Set-LinkConfiguration {
+    param($Links)
+
+    foreach ($link in $Links) {
+        $iface = Get-NetAdapter | Where-Object { $_.MacAddress -eq ($link.ethernet_mac_address -Replace ":","-") }
+        if (!$iface) {
+            throw "Link with MAC address $($link.ethernet_mac_address) does not exist"
+        }
+
+        # Rename Link
+        if ($link.id -and $iface.Name -ne $link.id) {
+            Write-Log "Renaming link $($iface.Name) to $($link.id)"
+            Rename-NetAdapter -InputObject $iface -NewName $link.id -Confirm:$false | Out-Null
+            $iface = Get-NetAdapter | Where-Object { $_.MacAddress -eq ($link.ethernet_mac_address -Replace ":","-") }
+        }
+
+        # Set link MTU
+        if ($link.mtu) {
+            Execute-Retry {
+                $iface = Get-NetAdapter | Where-Object { $_.MacAddress -eq ($link.ethernet_mac_address -Replace ":","-") }
+                Write-Log "Setting MTU $($link.mtu) for link $($iface.name)"
+                $netshOut = $(netsh.exe interface ipv4 set subinterface "$($iface.name)" mtu="$($link.mtu)" store=persistent 2>&1)
+                if ($LASTEXITCODE) {
+                    throw "MTU could not be set for link $($iface.name). Error: ${netshOut}"
+                }
+            }
+        }
+    }
+}
 
 function Main {
     param($RawNetworkConfig)
@@ -602,7 +268,11 @@ function Main {
     $networkConfig = Parse-NetworkConfig $RawNetworkConfig
 
     Write-Log $networkConfig
-    # Set-NetworkConfig $networkConfig
+    $links = $networkConfig.links
+    $networks = $networkConfig.networks
+    $dns = $networkConfig.services | Where-Object { $_.type -eq "dns"}
+
+    Set-LinkConfiguration $links
 }
 
 
