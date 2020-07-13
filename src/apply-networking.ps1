@@ -190,7 +190,12 @@ function Set-Network {
         throw "No interface or multiple interfaces have been found with name $($network.link)"
     }
 
-    if ($network.type -eq "ipv4") {
+    $addressFamily = "IPv4"
+    if ($network.type.IndexOf("ipv6") -gt -1) {
+        $addressFamily = "IPv6"
+    }
+
+    if ($network.type.IndexOf('dhcp') -eq -1) {
         $ipAddress = $network.ip_address
         $netmask = $network.netmask
         $prefixLength = Convert-IpAddressToPrefixLength $netmask
@@ -199,12 +204,12 @@ function Set-Network {
 
         $addIpAddress = $true
         # Set network to static if DHCP was enabled
-        $ipInterface = Get-NetIPInterface -InterfaceIndex $iface.ifIndex -AddressFamily "IPv4"
+        $ipInterface = Get-NetIPInterface -InterfaceIndex $iface.ifIndex -AddressFamily $addressFamily
         if ($ipInterface.Dhcp -ne "Disabled") {
             Set-NetIPInterface -InterfaceIndex $iface.ifIndex -Dhcp "Disabled"
         } else {
             # Verify if there is the need to change the IP
-            $ipAddresses = Get-NetIPAddress -InterfaceIndex $iface.ifIndex -AddressFamily "IPv4"
+            $ipAddresses = Get-NetIPAddress -InterfaceIndex $iface.ifIndex -AddressFamily $addressFamily
             if (($ipAddresses | Measure-Object).Count -eq 1) {
                 # Check if there is the same IP
                 if ($ipAddresses.IPAddress -eq $ipAddress -and $ipAddresses.PrefixLength -eq $prefixLength) {
@@ -222,16 +227,16 @@ function Set-Network {
             New-NetIPAddress -IPAddress $ipAddress `
                  -PrefixLength $prefixLength `
                  -InterfaceIndex $iface.ifIndex `
-                 -AddressFamily "IPv4" `
+                 -AddressFamily $addressFamily `
                  -Confirm:$false -ErrorAction "Stop" | Out-Null
         }
 
         if (!$routes) {
             Write-Log "Remove all routes for link $($network.link)"
             Remove-NetRoute -Confirm:$false -InterfaceIndex $iface.ifIndex `
-                -ErrorAction SilentlyContinue -AddressFamily "IPv4"
+                -ErrorAction SilentlyContinue -AddressFamily $addressFamily
         } else {
-            $existentRoutes = Get-NetRoute -InterfaceIndex $iface.ifIndex -AddressFamily "IPv4" `
+            $existentRoutes = Get-NetRoute -InterfaceIndex $iface.ifIndex -AddressFamily $addressFamily `
                 -Protocol "NetMgmt" -ErrorAction SilentlyContinue
             $mapRoutesDesired = @()
             $mapRoutesExistent = @()
@@ -263,29 +268,24 @@ function Set-Network {
                 Remove-NetRoute -Confirm:$false -ErrorAction SilentlyContinue `
                     -DestinationPrefix $routeToRemove.initial.DestinationPrefix `
                     -NextHop $routeToRemove.initial.NextHop `
-                    -AddressFamily "IPv4" -InterfaceIndex $iface.ifIndex | Out-Null
+                    -AddressFamily $addressFamily -InterfaceIndex $iface.ifIndex | Out-Null
             }
             foreach ($routeToAdd in $routesToAdd) {
                 Write-Log "Adding route $($routeToAdd.for_comparison)"
                 New-NetRoute -Confirm:$false -ErrorAction SilentlyContinue `
                     -DestinationPrefix $routeToAdd.initial.DestinationPrefix `
                     -NextHop $routeToAdd.initial.NextHop `
-                    -AddressFamily "IPv4" -InterfaceIndex $iface.ifIndex | Out-Null
+                    -AddressFamily $addressFamily -InterfaceIndex $iface.ifIndex | Out-Null
             }
         }
 
         Set-Nameservers $nameservers $network.link
     }
 
-    if ($network.type -eq "ipv4_dhcp" -or $network.type -eq "ipv6_dhcp") {
-        $addressFamily = "IPv4"
-        if ($network.type -eq "ipv6_dhcp") {
-            $addressFamily = "IPv6"
-        }
+    if ($network.type.IndexOf("dhcp") -gt -1) {
         Write-Log "Enabling DHCP on interface $($network.link)"
         Set-NetIPInterface -InterfaceIndex $iface.ifIndex -Dhcp Enabled `
             -AddressFamily $addressFamily
-        continue
     }
 }
 
