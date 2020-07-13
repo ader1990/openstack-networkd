@@ -181,25 +181,32 @@ function Set-Nameservers {
     [CmdletBinding()]
     Param(
         [Parameter(Mandatory=$true)]
-        [System.Collections.Generic.List[object]]$nameservers
+        $nameservers
     )
+
     PROCESS {
         $searchSuffix = [System.Collections.Generic.List[object]](New-Object "System.Collections.Generic.List[object]")
         $addresses = [System.Collections.Generic.List[object]](New-Object "System.Collections.Generic.List[object]")
-        foreach ($i in $nameservers) {
-            if($i["search"] -and $i["search"].Count -gt 0){
-                foreach($s in $i["search"]) {
+        foreach ($nameserver in $nameservers) {
+            if ($nameserver.search -and $nameserver.search.Count -gt 0){
+                foreach ($s in $nameserver.search) {
                     $searchSuffix.Add($s)
                 }
             }
-            if($i["address"]){
-                $addresses.Add($i["address"])
+            if ($nameserver.address) {
+                $addresses.Add($nameserver.address)
             }
         }
-        if($searchSuffix.Count) {
-            Set-DnsClientGlobalSetting -SuffixSearchList $searchSuffix -Confirm:$false | out-null
+
+        if ($searchSuffix.Count) {
+            Write-Log "Setting global DNS Suffix to ${searchSuffix}"
+            Set-DnsClientGlobalSetting -SuffixSearchList $searchSuffix -Confirm:$false | Out-null
         }
-        Set-DnsClientServerAddress * -ServerAddresses $addresses -Confirm:$false | out-null
+
+        if ($addresses) {
+            Write-Log "Setting global DNSses to ${addresses}"
+            Set-DnsClientServerAddress * -ServerAddresses $addresses -Confirm:$false | Out-Null
+        }
     }
 }
 
@@ -270,9 +277,10 @@ function Main {
     Write-Log $networkConfig
     $links = $networkConfig.links
     $networks = $networkConfig.networks
-    $dns = $networkConfig.services | Where-Object { $_.type -eq "dns"}
+    $nameservers = $networkConfig.services | Where-Object { $_.type -eq "dns"}
 
     Set-LinkConfiguration $links
+    Set-Nameservers $nameservers
 }
 
 
