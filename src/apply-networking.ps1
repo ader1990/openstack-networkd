@@ -59,13 +59,17 @@ function Convert-IpAddressToPrefixLength {
     )
 
     $maskLength = 0
-    [IPAddress]$IPv4 = $IPAddress
+    [IPAddress]$IPAddress = $IPAddress
 
-    foreach ($Octet in ($IPv4.IPAddressToString.Split('.'))) {
-        while ($Octet -ne 0) {
-            $Octet = ($Octet -shl 1) -band [byte]::MaxValue
-            $maskLength ++
+    if ($IPAddress.AddressFamily -ne "InterNetworkV6") {
+        foreach ($Octet in ($IPAddress.IPAddressToString.Split('.'))) {
+            while ($Octet -ne 0) {
+                $Octet = ($Octet -shl 1) -band [byte]::MaxValue
+                $maskLength ++
+            }
         }
+    } else {
+        $maskLength = 64
     }
 
     return $maskLength
@@ -111,7 +115,7 @@ function Set-Nameservers {
 function Get-ExampleNetworkData {
     param($DataType = "raw")
 
-    $txtData = '{"services": [{"type": "dns", "address": "8.8.8.8"}], "networks": [{"network_id": "81d5292e-790a-4b1a-8dff-f6dffec066fb", "type": "ipv4", "services": [{"type": "dns", "address": "8.8.8.8"}], "netmask": "255.255.255.0", "link": "tap854477c8-bb", "routes": [{"netmask": "0.0.0.0", "network": "0.0.0.0", "gateway": "192.168.5.1"}], "ip_address": "192.168.5.17", "id": "network0"}], "links": [{"ethernet_mac_address": "00:15:5D:64:98:60", "mtu": 1450, "type": "ovs", "id": "tap854477c8-bb", "vif_id": "854477c8-bbfe-48f5-894d-80f0cdfcca60"}]}'
+    $txtData = '{"services": [{"type": "dns", "address": "8.8.8.8"}], "networks": [{"network_id": "9b7af987-cdfc-4599-8687-d577aab25f88", "type": "ipv6", "services": [{"type": "dns", "address": "2001:4860:4860::8888"}], "netmask": "ffff:ffff:ffff:ffff::", "link": "tap854477c8-bb", "routes": [{"netmask": "::", "network": "::", "gateway": "fe80::1ff:fe23:4567:890a"}], "ip_address": "fe80::9", "id": "network2"},{"network_id": "81d5292e-790a-4b1a-8dff-f6dffec066fb", "type": "ipv4", "services": [{"type": "dns", "address": "8.8.8.8"}], "netmask": "255.255.255.0", "link": "tap854477c8-bb", "routes": [{"netmask": "0.0.0.0", "network": "0.0.0.0", "gateway": "192.168.5.1"}], "ip_address": "192.168.5.17", "id": "network0"}], "links": [{"ethernet_mac_address": "00:15:5D:64:98:60", "mtu": 1450, "type": "ovs", "id": "tap854477c8-bb", "vif_id": "854477c8-bbfe-48f5-894d-80f0cdfcca60"}]}'
 
     if ($DataType -eq "raw") {
         return [Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes($txtData))
@@ -183,17 +187,18 @@ function Set-Links {
 function Set-Network {
     param($Network)
 
-    Write-Log "Configuring network for link $($network.link)"
+    $addressFamily = "IPv4"
+    if ($network.type.IndexOf("ipv6") -gt -1) {
+        $addressFamily = "IPv6"
+    }
+
+    Write-Log "Configuring ${addressFamily} network for link $($network.link)"
 
     $iface = Get-NetAdapter | Where-Object { $_.Name -eq $network.link }
     if (!$iface -or ($iface | Measure-Object).Count -gt 1) {
         throw "No interface or multiple interfaces have been found with name $($network.link)"
     }
 
-    $addressFamily = "IPv4"
-    if ($network.type.IndexOf("ipv6") -gt -1) {
-        $addressFamily = "IPv6"
-    }
 
     if ($network.type.IndexOf('dhcp') -eq -1) {
         $ipAddress = $network.ip_address
@@ -204,15 +209,19 @@ function Set-Network {
 
         $addIpAddress = $true
         # Set network to static if DHCP was enabled
-        $ipInterface = Get-NetIPInterface -InterfaceIndex $iface.ifIndex -AddressFamily $addressFamily
+        $ipInterface = Get-NetIPInterface -InterfaceIndex $iface.ifIndex `
+            -AddressFamily $addressFamily
         if ($ipInterface.Dhcp -ne "Disabled") {
-            Set-NetIPInterface -InterfaceIndex $iface.ifIndex -Dhcp "Disabled"
+            Set-NetIPInterface -InterfaceIndex $iface.ifIndex -Dhcp "Disabled" `
+                -AddressFamily $addressFamily
         } else {
             # Verify if there is the need to change the IP
-            $ipAddresses = Get-NetIPAddress -InterfaceIndex $iface.ifIndex -AddressFamily $addressFamily
+            $ipAddresses = Get-NetIPAddress -InterfaceIndex $iface.ifIndex `
+                -AddressFamily $addressFamily -ErrorAction SilentlyContinue
             if (($ipAddresses | Measure-Object).Count -eq 1) {
                 # Check if there is the same IP
-                if ($ipAddresses.IPAddress -eq $ipAddress -and $ipAddresses.PrefixLength -eq $prefixLength) {
+                if ($ipAddresses.IPAddress -eq $ipAddress -and `
+                    $ipAddresses.PrefixLength -eq $prefixLength) {
                     $addIpAddress = $false
                 }
             }
@@ -221,20 +230,20 @@ function Set-Network {
         if ($addIpAddress) {
             Write-Log "Link $($network.link) has a different IP, remove it."
             Remove-NetIPAddress -InterfaceIndex $iface.ifIndex -Confirm:$false `
-                -ErrorAction SilentlyContinue
+                -AddressFamily $addressFamily -ErrorAction SilentlyContinue
 
             Write-Log "Set new IP on Link $($network.link)."
             New-NetIPAddress -IPAddress $ipAddress `
                  -PrefixLength $prefixLength `
                  -InterfaceIndex $iface.ifIndex `
                  -AddressFamily $addressFamily `
-                 -Confirm:$false -ErrorAction "Stop" | Out-Null
+                 -Confirm:$false -ErrorAction "SilentlyContinue" | Out-Null
         }
 
         if (!$routes) {
             Write-Log "Remove all routes for link $($network.link)"
             Remove-NetRoute -Confirm:$false -InterfaceIndex $iface.ifIndex `
-                -ErrorAction SilentlyContinue -AddressFamily $addressFamily
+                 -AddressFamily $addressFamily -ErrorAction SilentlyContinue
         } else {
             $existentRoutes = Get-NetRoute -InterfaceIndex $iface.ifIndex -AddressFamily $addressFamily `
                 -Protocol "NetMgmt" -ErrorAction SilentlyContinue
@@ -272,7 +281,7 @@ function Set-Network {
             }
             foreach ($routeToAdd in $routesToAdd) {
                 Write-Log "Adding route $($routeToAdd.for_comparison)"
-                New-NetRoute -Confirm:$false -ErrorAction SilentlyContinue `
+                New-NetRoute -Confirm:$false `
                     -DestinationPrefix $routeToAdd.initial.DestinationPrefix `
                     -NextHop $routeToAdd.initial.NextHop `
                     -AddressFamily $addressFamily -InterfaceIndex $iface.ifIndex | Out-Null
