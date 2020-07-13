@@ -52,38 +52,6 @@ function Execute-Retry {
     }
 }
 
-function Set-PhysicalAdapters {
-    [CmdletBinding()]
-    Param(
-        [Parameter(Mandatory=$true)]
-        [System.Collections.Generic.List[object]]$Data
-    )
-    PROCESS {
-        foreach($nic in $Data) {
-            $mac = $nic.mac
-            if (!$mac) {
-                Write-Log "MAC address is not present in the data"
-                continue
-            }
-            $Iface = Get-NetAdapter | Where-Object {$_.MacAddress -eq ($mac -Replace ":","-")}
-            if (!$Iface) {
-                Write-Log ("Net adapter with MAC {0} could not be found" -f $mac)
-                continue
-            }
-            $Iface | Enable-NetAdapter | Out-Null
-            if ($nic.name -and ($nic.Name -ne $Iface.Name)) {
-                Rename-NetAdapter -InputObject $Iface -NewName $nic.name -Confirm:$false `
-                    -ErrorAction SilentlyContinue | Out-Null
-            }
-            if ($nic["mtu"]) {
-                netsh interface ipv4 set subinterface $nic["name"] mtu=$nic["mtu"] store=persistent 2>&1 | Out-Null
-            }
-            if ($nic["subnets"] -and $nic["subnets"].Count -gt 0) {
-                Set-InterfaceSubnets -Iface $Iface -Subnets $nic["subnets"] | Out-Null
-            }
-        }
-    }
-}
 
 function Set-InterfaceSubnets {
     [CmdletBinding()]
@@ -255,6 +223,12 @@ function Set-Links {
             Rename-NetAdapter -InputObject $iface -NewName $link.id -Confirm:$false | Out-Null
             $iface = Get-NetAdapter | Where-Object `
                 { $_.MacAddress -eq ($link.ethernet_mac_address -Replace ":","-") }
+        }
+
+        # Bring link up
+        if ($iface.Status -ne "Up") {
+            Write-Log "Enabling interface $($iface.Name)"
+            $iface | Enable-NetAdapter | Out-Null
         }
 
         # Set link MTU
