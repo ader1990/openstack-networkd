@@ -72,98 +72,6 @@ function Convert-IpAddressToPrefixLength {
 }
 
 
-function Set-InterfaceSubnets {
-    [CmdletBinding()]
-    Param(
-        [Parameter(Mandatory=$true)]
-        [object]$Iface,
-        [Parameter(Mandatory=$true)]
-        [array]$Subnets
-    )
-    PROCESS {
-        # Interfaces that only have manual subnet types will be disabled
-        # Interfaces that are meant to be part of bond ports will be enabled
-        # while setting up the bond port
-        $isManual = $true
-        try {
-            Remove-NetIPAddress -InterfaceIndex $Iface.ifIndex -Confirm:$false
-        } catch {
-            Write-Log "Could not remove network IP addresses"
-        }
-        Get-NetRoute -DestinationPrefix "0.0.0.0/0" -ErrorAction SilentlyContinue | `
-            Remove-NetRoute -Confirm:$false -ErrorAction SilentlyContinue
-        Get-NetRoute -DestinationPrefix "::/0" -ErrorAction SilentlyContinue | `
-            Remove-NetRoute -Confirm:$false -ErrorAction SilentlyContinue
-        $subnets = $subnets | Sort-Object { !$_["public"]}
-        foreach($subnet in $subnets) {
-            switch ($subnet["type"]) {
-                "static" {
-                    Write-Log "Setting static subnet for iface $($Iface.ifIndex)"
-                    # we have at least one static subnet on this interface
-                    $isManual = $false
-                    $cidr = $subnet["address"]
-                    if (!$cidr) {
-                        continue
-                    }
-                    $ip, $prefixLength = $cidr.Split("/")
-                    $gateway = $subnet["gateway"]
-                    $addressFamily = "ipv4"
-                    if ($subnet["address_family"]) {
-                        $addressFamily = $subnet["address_family"]
-                    }
-
-                    Set-NetIPInterface -InterfaceIndex $Iface.ifIndex -Dhcp Disabled
-                    if ($gateway) {
-                        if (!$subnet["public"]) {
-                            $destPrefix = "10.0.0.0"
-                            $netMask = "255.0.0.0"
-                            $prefixLength = "30"
-                            $metric = 261
-                            New-NetIPAddress -IPAddress $ip `
-                                     -PrefixLength $prefixLength `
-                                     -InterfaceIndex $Iface.ifIndex `
-                                     -AddressFamily $addressFamily `
-                                     -Confirm:$false -ErrorAction "Stop" | Out-Null
-                            Start-Sleep 15
-                            $routeAddOutput = $(route -p add "$destPrefix" mask "$netMask" "$gateway" metric $metric 2>&1)
-                            Write-Log "Route output: $routeAddOutput"
-                            if ($routeAddOutput -like "*fail*") {
-                                Start-Sleep 60
-                                $routeAddOutput = $(route -p add "$destPrefix" mask "$netMask" "$gateway" metric $metric 2>&1)
-                                Write-Log "Route output: $routeAddOutput"
-                            }
-                        } else {
-                            New-NetIPAddress -IPAddress $ip `
-                                     -PrefixLength $prefixLength `
-                                     -InterfaceIndex $Iface.ifIndex `
-                                     -AddressFamily $addressFamily `
-                                     -DefaultGateway $gateway `
-                                     -Confirm:$false -ErrorAction "Stop" | Out-Null
-                        }
-                    }
-
-                    $nameservers = $subnet["dns_nameservers"]
-                    if ($nameservers -and $nameservers.Count -gt 0) {
-                        Set-DnsClientServerAddress -InterfaceIndex $Iface.ifIndex `
-                            -ServerAddresses $nameservers -Confirm:$false | Out-Null
-                    }
-                }
-                "dhcp4" {
-                    # this is the default on Windows. However, if the main adapter has DHCP enabled and there is an alias
-                    # with static address assigned, then DHCP will be disabled on the interface as a whole
-                    $isManual = $false
-                    Set-NetIPInterface -InterfaceIndex $Iface.ifIndex -Dhcp Enabled
-                    continue
-                }
-            }
-        }
-        if($isManual) {
-            Disable-NetAdapter -InputObject $Iface -Confirm:$false | Out-Null
-        }
-    }
-}
-
-
 function Set-Nameservers {
     [CmdletBinding()]
     Param(
@@ -305,7 +213,7 @@ function Set-Networks {
                 Write-Log "Link $($network.link) has a different IP, remove it."
                 Remove-NetIPAddress -InterfaceIndex $iface.ifIndex -Confirm:$false `
                     -ErrorAction SilentlyContinue
-                
+
                 Write-Log "Set new IP on Link $($network.link)."
                 New-NetIPAddress -IPAddress $ipAddress `
                      -PrefixLength $prefixLength `
@@ -320,30 +228,45 @@ function Set-Networks {
                     -ErrorAction SilentlyContinue -AddressFamily "IPv4"
             } else {
                 $existentRoutes = Get-NetRoute -InterfaceIndex $iface.ifIndex -AddressFamily "IPv4" `
-                    -Protocol "NetMgmt"
+                    -Protocol "NetMgmt" -ErrorAction SilentlyContinue
                 $mapRoutesDesired = @()
                 $mapRoutesExistent = @()
                 foreach ($desiredRoute in $routes) {
                     $prefixLengthR = Convert-IpAddressToPrefixLength $desiredRoute.netmask
-                    $nextHopR = $route.gateway
-                    $networkR = $route.network
+                    $nextHopR = $desiredRoute.gateway
+                    $networkR = $desiredRoute.network
                     $mapRoutesDesired += @{
                         "initial" = @{
                             "DestinationPrefix" = "$networkR/$prefixLengthR";
-                            "nextHopR" = $nextHopR;
+                            "NextHop" = $nextHopR;
                         };
                         "for_comparison" = "$networkR/$prefixLengthR/$nextHopR";
                     }
                 }
-                Write-Log $mapRoutesDesired
                 foreach ($existentRoute in $existentRoutes) {
                     $mapRoutesExistent += @{
                         "initial" = @{
                             "DestinationPrefix" = $existentRoute.DestinationPrefix
-                            "nextHopR" = $existentRoute.NextHop;
+                            "NextHop" = $existentRoute.NextHop;
                         };
                         "for_comparison" = $existentRoute.DestinationPrefix + "/" + $existentRoute.NextHop;
                     }
+                }
+                $routesToRemove = $mapRoutesExistent | Where-Object { $_ -NotContains $mapRoutesDesired }
+                $routesToAdd = $mapRoutesDesired | Where-Object { $_ -NotContains $mapRoutesExistent }
+                foreach ($routeToRemove in $routesToRemove) {
+                    Write-Log "Removing route $($routeToRemove.for_comparison)"
+                    Remove-NetRoute -Confirm:$false -ErrorAction SilentlyContinue `
+                        -DestinationPrefix $routeToRemove.initial.DestinationPrefix `
+                        -NextHop $routeToRemove.initial.NextHop `
+                        -AddressFamily "IPv4" -InterfaceIndex $iface.ifIndex | Out-Null
+                }
+                foreach ($routeToAdd in $routesToAdd) {
+                    Write-Log "Adding route $($routeToAdd.for_comparison)"
+                    New-NetRoute -Confirm:$false -ErrorAction SilentlyContinue `
+                        -DestinationPrefix $routeToAdd.initial.DestinationPrefix `
+                        -NextHop $routeToAdd.initial.NextHop `
+                        -AddressFamily "IPv4" -InterfaceIndex $iface.ifIndex | Out-Null
                 }
             }
 
