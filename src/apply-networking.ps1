@@ -269,6 +269,31 @@ function Set-LinkConfiguration {
     }
 }
 
+
+function Set-Networks {
+    param($Networks)
+    foreach ($network in $Networks) {
+        Write-Log "Configuring network for link $($network.link)"
+
+        $iface = Get-NetAdapter | Where-Object { $_.Name -eq $network.link }
+        if (!$iface -or $iface.Count -gt 1) {
+            throw "No interface or multiple interfaces have been found with name $($network.link)"
+        }
+
+        if ($network.type -eq "ipv4_dhcp" -or $network.type -eq "ipv6_dhcp") {
+            $addressFamily = "IPv4"
+            if ($network.type -eq "ipv6_dhcp") {
+                $addressFamily = "IPv6"
+            }
+            Write-Log "Enabling DHCP on interface $($network.link)"
+            Set-NetIPInterface -InterfaceIndex $iface.ifIndex -Dhcp Enabled `
+                -AddressFamily $addressFamily
+            continue
+        }
+    }
+}
+
+
 function Main {
     param($RawNetworkConfig)
 
@@ -280,6 +305,7 @@ function Main {
     $nameservers = $networkConfig.services | Where-Object { $_.type -eq "dns"}
 
     Set-LinkConfiguration $links
+    Set-Networks $networks
     Set-Nameservers $nameservers
 }
 
