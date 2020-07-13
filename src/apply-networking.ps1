@@ -214,7 +214,7 @@ function Set-Nameservers {
 function Get-ExampleNetworkData {
     param($DataType = "raw")
 
-    $txtData = '{"services": [{"type": "dns", "address": "8.8.8.8"}], "networks": [{"network_id": "94d81ebe-cfbb-4aa2-8081-97c025afac71", "link": "tap854477c8-bb", "type": "ipv4_dhcp", "id": "network0"}], "links": [{"ethernet_mac_address": "00:15:5D:64:98:60", "mtu": 1450, "type": "ovs", "id": "tap854477c8-bb", "vif_id": "854477c8-bbfe-48f5-894d-80f0cdfcca60"}]}'
+    $txtData = '{"services": [{"type": "dns", "address": "8.8.8.8"}], "networks": [{"network_id": "81d5292e-790a-4b1a-8dff-f6dffec066fb", "type": "ipv4", "services": [{"type": "dns", "address": "8.8.8.8"}], "netmask": "255.255.255.0", "link": "tap854477c8-bb", "routes": [{"netmask": "0.0.0.0", "network": "0.0.0.0", "gateway": "192.168.5.1"}], "ip_address": "192.168.5.17", "id": "network0"}], "links": [{"ethernet_mac_address": "00:15:5D:64:98:60", "mtu": 1450, "type": "ovs", "id": "tap854477c8-bb", "vif_id": "854477c8-bbfe-48f5-894d-80f0cdfcca60"}]}'
 
     if ($DataType -eq "raw") {
         return [Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes($txtData))
@@ -239,11 +239,12 @@ function Parse-NetworkConfig {
 }
 
 
-function Set-LinkConfiguration {
+function Set-Links {
     param($Links)
 
     foreach ($link in $Links) {
-        $iface = Get-NetAdapter | Where-Object { $_.MacAddress -eq ($link.ethernet_mac_address -Replace ":","-") }
+        $iface = Get-NetAdapter | Where-Object `
+            { $_.MacAddress -eq ($link.ethernet_mac_address -Replace ":","-") }
         if (!$iface) {
             throw "Link with MAC address $($link.ethernet_mac_address) does not exist"
         }
@@ -252,13 +253,15 @@ function Set-LinkConfiguration {
         if ($link.id -and $iface.Name -ne $link.id) {
             Write-Log "Renaming link $($iface.Name) to $($link.id)"
             Rename-NetAdapter -InputObject $iface -NewName $link.id -Confirm:$false | Out-Null
-            $iface = Get-NetAdapter | Where-Object { $_.MacAddress -eq ($link.ethernet_mac_address -Replace ":","-") }
+            $iface = Get-NetAdapter | Where-Object `
+                { $_.MacAddress -eq ($link.ethernet_mac_address -Replace ":","-") }
         }
 
         # Set link MTU
         if ($link.mtu) {
             Execute-Retry {
-                $iface = Get-NetAdapter | Where-Object { $_.MacAddress -eq ($link.ethernet_mac_address -Replace ":","-") }
+                $iface = Get-NetAdapter | Where-Object `
+                    { $_.MacAddress -eq ($link.ethernet_mac_address -Replace ":","-") }
                 Write-Log "Setting MTU $($link.mtu) for link $($iface.name)"
                 $netshOut = $(netsh.exe interface ipv4 set subinterface "$($iface.name)" mtu="$($link.mtu)" store=persistent 2>&1)
                 if ($LASTEXITCODE) {
@@ -302,9 +305,9 @@ function Main {
     Write-Log $networkConfig
     $links = $networkConfig.links
     $networks = $networkConfig.networks
-    $nameservers = $networkConfig.services | Where-Object { $_.type -eq "dns"}
+    $nameservers = $networkConfig.services | Where-Object { $_.type -eq "dns" }
 
-    Set-LinkConfiguration $links
+    Set-Links $links
     Set-Networks $networks
     Set-Nameservers $nameservers
 }
