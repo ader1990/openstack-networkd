@@ -12,7 +12,6 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import abc
 import json
 import subprocess
 import sys
@@ -20,19 +19,31 @@ import time
 
 from base64 import b64decode
 
+NET_RENDERERS = ["eni", "sysconfig", "netplan"]
 
-class Ubuntu14Distro(metaclass=abc.ABCMeta):
+
+class Ubuntu14Distro(object):
 
     def __init__(self):
         self.distro_name = "ubuntu_14_04"
         self.distro_family = "debian"
         self.service_binary = "service"
-        self.network_implementation = "interfaces"
+        self.network_implementation = "eni"
 
     def set_network_config_file(self, network_data):
+        # use /etc/network/interfaces.d/50-cloud-init.conf
+        # to write the IP config
+        # use /etc/resolv.conf for DNS
         pass
 
     def apply_network_config(self, network_data):
+        # use ip
+        # get the link name from the MAC address
+        # ip link set <link_name> mtu=$MTU
+        # ip link set <link_name> up
+        # ip addr flush dev <link_name>
+        # ip addr add <ip>/<prefixlen> dev <link_name>
+        # ip route add default via <gateway> dev <link_name>
         pass
 
 
@@ -75,7 +86,10 @@ def retry_decorator(max_retry_count=5, sleep_time=5):
 
 
 def parse_fron_b64_json(b64json_data):
-    return json.loads(b64decode(b64json_data))
+    json_data = b64decode(b64json_data)
+    if type(json_data) is bytes:
+        json_data = json_data.decode()
+    return json.loads(json_data)
 
 
 def LOG(msg):
