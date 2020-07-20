@@ -52,46 +52,31 @@ function Execute-Retry {
     }
 }
 
-function Convert-Ipv6toDecimal {
-    param($IPv6Address)
 
-    $Ipv6AddrBytes = [System.Net.IPAddress]::Parse($Ipv6Address).GetAddressBytes();
+# Original work found at: http://www.indented.co.uk/2010/01/23/powershell-subnet-math/
+function ConvertTo-MaskLength {
+  <#
+    .Synopsis
+      Returns the length of a subnet mask.
+    .Description
+      ConvertTo-MaskLength accepts any IPv4 address as input, however the output value
+      only makes sense when using a subnet mask.
+    .Parameter SubnetMask
+      A subnet mask to convert into length
+  #>
 
-    # [BigInt[]]$BytesList =[BigInt[]]$Ipv6AddrBytes;
-    # [array]::reverse($BytesList)
-    # $Ipv6AddrBytes = $BytesList;
+  [CmdLetBinding()]
+  param(
+    [Parameter(Mandatory = $True, Position = 0, ValueFromPipeline = $True)]
+    [Alias("Mask")]
+    [Net.IPAddress]$SubnetMask
+  )
 
-    [BigInt]$Ipv6Number = 0
-    [BigInt[]]$BigIntArray = @(0,0)
+  process {
+    $Bits = "$( $SubnetMask.GetAddressBytes() | ForEach-Object { [Convert]::ToString($_, 2) } )" -replace '[\s0]'
 
-    $BigIntArray[0] += [System.BitConverter]::ToUInt64($Ipv6AddrBytes,8)
-    $BigIntArray[1] = [System.BitConverter]::ToUInt64($Ipv6AddrBytes,0)
-    $BigIntArray[0] = $BigIntArray[0] -shl 64
-    [bigint]$Ipv6Number = $BigIntArray[0] + $BigIntArray[1]
-
-    return 0
-}
-
-
-function Convert-IpAddressToPrefixLength {
-    Param(
-        $IPAddress
-    )
-
-    $maskLength = 0
-    [IPAddress]$IPAddressF = $IPAddress
-
-    if ($IPAddressF.AddressFamily -ne "InterNetworkV6") {
-        foreach ($Octet in ($IPAddressF.IPAddressToString.Split('.'))) {
-            while ($Octet -ne 0) {
-                $Octet = ($Octet -shl 1) -band [byte]::MaxValue
-                $maskLength ++
-            }
-        }
-        return $maskLength
-    }
-
-    return (Convert-Ipv6toDecimal $IPAddress)
+    return $Bits.Length
+  }
 }
 
 
@@ -222,7 +207,7 @@ function Set-Network {
     if ($network.type.IndexOf('dhcp') -eq -1) {
         $ipAddress = $network.ip_address
         $netmask = $network.netmask
-        $prefixLength = Convert-IpAddressToPrefixLength $netmask
+        $prefixLength = ConvertTo-MaskLength $netmask
         $nameservers = $network.services | Where-Object { $_.type -eq "dns" }
         $routes = $network.routes
 
@@ -269,7 +254,7 @@ function Set-Network {
             $mapRoutesDesired = @()
             $mapRoutesExistent = @()
             foreach ($desiredRoute in $routes) {
-                $prefixLengthR = Convert-IpAddressToPrefixLength $desiredRoute.netmask
+                $prefixLengthR = ConvertTo-MaskLength $desiredRoute.netmask
                 $nextHopR = $desiredRoute.gateway
                 $networkR = $desiredRoute.network
                 $mapRoutesDesired += @{

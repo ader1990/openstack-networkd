@@ -193,8 +193,7 @@ Capabilities:
 
 TODO:
 
-  * Add full support for IPV6
-  * Add support for PowerShell on Windows 2012 R2
+  * Test script on Windows 2012 R2
 
 Example:
 
