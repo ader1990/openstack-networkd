@@ -78,7 +78,7 @@ class Ubuntu14Distro(object):
                 raise Exception("Link could not be set to up state")
 
         for network in network_data["networks"]:
-            LOG("Apply network : " + network["id"] + " for link " + network["link"])
+            LOG("Apply network " + network["id"] + " for " + network["link"])
             os_link_name = links[network["link"]]["os_link_name"]
             if not os_link_name:
                 raise Exception("Link not found for network")
@@ -92,7 +92,8 @@ class Ubuntu14Distro(object):
             ip_netmask = network["netmask"]
             prefixlen = str(mask_to_net_prefix(str(ip_netmask)))
             addr_add_cmd = ["ip", "addr", "add",
-                            ip_address + "/" + prefixlen, "dev", os_link_name]
+                            ip_address + "/" + prefixlen,
+                            "dev", os_link_name]
             out, err, exit_code = execute_process(addr_add_cmd, shell=False)
             if exit_code:
                 raise Exception("IP could not be set. Err: %s" % err)
@@ -102,9 +103,10 @@ class Ubuntu14Distro(object):
                 gateway = route["gateway"]
                 prefixlen = str(mask_to_net_prefix(str(route["netmask"])))
                 route_add_cmd = ["ip", "route", "add",
-                                 network_address + "/" + prefixlen, "via", gateway,
-                                 "dev", os_link_name]
-                out, err, exit_code = execute_process(route_add_cmd, shell=False)
+                                 network_address + "/" + prefixlen,
+                                 "via", gateway, "dev", os_link_name]
+                out, err, exit_code = execute_process(route_add_cmd,
+                                                      shell=False)
                 if exit_code:
                     raise Exception("Route could not be set. Err: %s" % err)
 
