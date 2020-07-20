@@ -78,9 +78,26 @@ class Ubuntu14Distro(object):
                 raise Exception("Link could not be set to up state")
 
         for network in network_data["networks"]:
-            LOG("Apply network for link: " + network["id"])
-            # ip addr flush dev <link_name>
-            # ip addr add <ip>/<prefixlen> dev <link_name>
+            LOG("Apply network : " + network["id"] + " for link " + network["link"])
+            os_link_name = links[network["link"]]
+            if not os_link_name:
+                raise Exception("Link not found for network")
+
+            flush_cmd = ["ip", "addr", "flush", "dev", os_link_name]
+            out, err, exit_code = execute_process(flush_cmd, shell=False)
+            if exit_code:
+                raise Exception("IP could not be flushed")
+
+            ip_address = network["ip_address"]
+            ip_netmask = network["netmask"]
+            prefixlen = sum(
+                bin(int(x)).count('1') for x in ip_netmask.split('.'))
+            addr_add_cmd = ["ip", "addr", "add",
+                            ip_address + "/" + prefixlen, "dev", os_link_name]
+            out, err, exit_code = execute_process(addr_add_cmd, shell=False)
+            if exit_code:
+                raise Exception("IP could not be set. Err: " + err)
+
             # ip route add <network/prefixlen> via <gateway> dev <link_name>
 
 
