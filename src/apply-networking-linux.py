@@ -79,7 +79,7 @@ class Ubuntu14Distro(object):
 
         for network in network_data["networks"]:
             LOG("Apply network : " + network["id"] + " for link " + network["link"])
-            os_link_name = links[network["link"]]
+            os_link_name = links[network["link"]]["os_link_name"]
             if not os_link_name:
                 raise Exception("Link not found for network")
 
@@ -90,8 +90,7 @@ class Ubuntu14Distro(object):
 
             ip_address = network["ip_address"]
             ip_netmask = network["netmask"]
-            prefixlen = sum(
-                bin(int(x)).count('1') for x in ip_netmask.split('.'))
+            prefixlen = str(mask_to_net_prefix(ip_netmask))
             addr_add_cmd = ["ip", "addr", "add",
                             ip_address + "/" + prefixlen, "dev", os_link_name]
             out, err, exit_code = execute_process(addr_add_cmd, shell=False)
@@ -99,6 +98,91 @@ class Ubuntu14Distro(object):
                 raise Exception("IP could not be set. Err: " + err)
 
             # ip route add <network/prefixlen> via <gateway> dev <link_name>
+
+
+def ipv4_mask_to_net_prefix(mask):
+    """Convert an ipv4 netmask into a network prefix length.
+
+    If the input is already an integer or a string representation of
+    an integer, then int(mask) will be returned.
+       "255.255.255.0" => 24
+       str(24)         => 24
+       "24"            => 24
+    """
+    if isinstance(mask, int):
+        return mask
+    if isinstance(mask, str):
+        try:
+            return int(mask)
+        except ValueError:
+            pass
+    else:
+        raise TypeError("mask '%s' is not a string or int")
+
+    if '.' not in mask:
+        raise ValueError("netmask '%s' does not contain a '.'" % mask)
+
+    toks = mask.split(".")
+    if len(toks) != 4:
+        raise ValueError("netmask '%s' had only %d parts" % (mask, len(toks)))
+
+    return sum([bin(int(x)).count('1') for x in toks])
+
+
+def ipv6_mask_to_net_prefix(mask):
+    """Convert an ipv6 netmask (very uncommon) or prefix (64) to prefix.
+
+    If 'mask' is an integer or string representation of one then
+    int(mask) will be returned.
+    """
+
+    if isinstance(mask, int):
+        return mask
+    if isinstance(mask, str):
+        try:
+            return int(mask)
+        except ValueError:
+            pass
+    else:
+        raise TypeError("mask '%s' is not a string or int")
+
+    if ':' not in mask:
+        raise ValueError("mask '%s' does not have a ':'")
+
+    bitCount = [0, 0x8000, 0xc000, 0xe000, 0xf000, 0xf800, 0xfc00, 0xfe00,
+                0xff00, 0xff80, 0xffc0, 0xffe0, 0xfff0, 0xfff8, 0xfffc,
+                0xfffe, 0xffff]
+    prefix = 0
+    for word in mask.split(':'):
+        if not word or int(word, 16) == 0:
+            break
+        prefix += bitCount.index(int(word, 16))
+
+    return prefix
+
+
+def is_ipv6_addr(address):
+    if not address:
+        return False
+    return ":" in str(address)
+
+
+def mask_to_net_prefix(mask):
+    """Return the network prefix for the netmask provided.
+
+    Supports ipv4 or ipv6 netmasks.
+    """
+
+    try:
+        # if 'mask' is a prefix that is an integer.
+        # then just return it.
+        return int(mask)
+    except ValueError:
+        pass
+    if is_ipv6_addr(mask):
+        return ipv6_mask_to_net_prefix(mask)
+    else:
+        return ipv4_mask_to_net_prefix(mask)
 
 
 def get_os_net_interfaces():
