@@ -54,8 +54,8 @@ class Ubuntu14Distro(object):
         pass
 
     def apply_network_config(self, network_data):
-        links = []
-        for link in network_data.links:
+        links = {}
+        for link in network_data["links"]:
             os_link_name = get_os_net_interface_by_mac(
                 link["ethernet_mac_address"])
             if not os_link_name:
@@ -66,11 +66,19 @@ class Ubuntu14Distro(object):
 
             LOG("Apply config for link: " + os_link_name)
             base_cmd = ["ip", "link", "set", "dev", os_link_name]
-            execute_process(base_cmd + ["mtu", link["mtu"]])
-            execute_process(base_cmd + ["up"])
 
-        for network in network_data.networks:
-            LOG("Apply config for link: " + network["id"])
+            mtu_cmd = base_cmd + ["mtu", link["mtu"]]
+            out, err, exit_code = execute_process(mtu_cmd, shell=False)
+            if exit_code:
+                raise Exception("MTU could not be set")
+
+            up_cmd = base_cmd + ["up"]
+            out, err, exit_code = execute_process(up_cmd, shell=False)
+            if exit_code:
+                raise Exception("Link could not be set to up state")
+
+        for network in network_data["networks"]:
+            LOG("Apply network for link: " + network["id"])
             # ip addr flush dev <link_name>
             # ip addr add <ip>/<prefixlen> dev <link_name>
             # ip route add <network/prefixlen> via <gateway> dev <link_name>
@@ -113,7 +121,8 @@ def get_example_metadata():
     return "eyJzZXJ2aWNlcyI6IFt7InR5cGUiOiAiZG5zIiwgImFkZHJlc3MiOiAiOC44LjguOCJ9XSwgIm5ldHdvcmtzIjogW3sibmV0d29ya19pZCI6ICI4MWQ1MjkyZS03OTBhLTRiMWEtOGRmZi1mNmRmZmVjMDY2ZmIiLCAidHlwZSI6ICJpcHY0IiwgInNlcnZpY2VzIjogW3sidHlwZSI6ICJkbnMiLCAiYWRkcmVzcyI6ICI4LjguOC44In1dLCAibmV0bWFzayI6ICIyNTUuMjU1LjI1NS4wIiwgImxpbmsiOiAidGFwODU0NDc3YzgtYmIiLCAicm91dGVzIjogW3sibmV0bWFzayI6ICIwLjAuMC4wIiwgIm5ldHdvcmsiOiAiMC4wLjAuMCIsICJnYXRld2F5IjogIjE5Mi4xNjguNS4xIn1dLCAiaXBfYWRkcmVzcyI6ICIxOTIuMTY4LjUuMTciLCAiaWQiOiAibmV0d29yazAifV0sICJsaW5rcyI6IFt7ImV0aGVybmV0X21hY19hZGRyZXNzIjogIjAwOjE1OjVEOjY0Ojk4OjYwIiwgIm10dSI6IDE0NTAsICJ0eXBlIjogIm92cyIsICJpZCI6ICJ0YXA4NTQ0NzdjOC1iYiIsICJ2aWZfaWQiOiAiODU0NDc3YzgtYmJmZS00OGY1LTg5NGQtODBmMGNkZmNjYTYwIn1dfQ=="
 
 
-def execute_process(self, args, shell=True, decode_output=False):
+def execute_process(args, shell=True, decode_output=False):
+    args = [str(arg) for arg in args]
     p = subprocess.Popen(args,
                          stdout=subprocess.PIPE,
                          stderr=subprocess.PIPE,
@@ -127,7 +136,7 @@ def execute_process(self, args, shell=True, decode_output=False):
     return out, err, p.returncode
 
 
-def retry_decorator(max_retry_count=5, sleep_time=5):
+def retry_decorator(max_retry_count=1, sleep_time=5):
     """Retries invoking the decorated method"""
 
     def wrapper(f):
