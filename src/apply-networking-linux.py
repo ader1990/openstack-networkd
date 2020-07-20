@@ -56,15 +56,22 @@ class Ubuntu14Distro(object):
         pass
 
     def apply_network_config(self, network_data):
-        # ip link set <link_name> mtu=<mtu>
-        # ip link set <link_name> up
+        # link need to be down before being renamed
+        # ip link set dev <link_name> down
+        # ip link set dev <link_name> name <new_link_name>
+
+        # ip link set dev <link_name> mtu <mtu>
+        # ip link set dev <link_name> up
         # ip addr flush dev <link_name>
+
         # ip addr add <ip>/<prefixlen> dev <link_name>
-        # ip route add default via <gateway> dev <link_name>
+        # ip route add <network/prefixlen> via <gateway> dev <link_name>
         pass
 
 
 def get_os_net_interfaces():
+    """Return NET interfaces as [eth0, eth1]"""
+
     try:
         devs = os.listdir(SYS_CLASS_NET)
     except OSError as e:
@@ -73,6 +80,31 @@ def get_os_net_interfaces():
         else:
             raise
     return devs
+
+
+def get_os_net_interface_by_mac(mac_address):
+    """Get interface name by MAC ADDRESS
+
+    MAC ADDRESS should be in this format: fa:16:3e:93:69:32
+    """
+
+    try:
+        devs = os.listdir(SYS_CLASS_NET)
+    except OSError as e:
+        if e.errno == errno.ENOENT:
+            return None
+        else:
+            raise
+
+    if not devs:
+        return None
+
+    for dev in devs:
+        mac_file_path = (
+            os.path.join(os.path.join(SYS_CLASS_NET, dev), 'address'))
+        with open(mac_file_path, 'rb') as mac_file:
+            if mac_address == mac_file.read():
+                return dev
 
 
 def get_example_metadata():
