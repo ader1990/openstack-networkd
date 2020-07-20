@@ -12,14 +12,29 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import errno
 import json
+import os
 import subprocess
 import sys
 import time
 
 from base64 import b64decode
 
+
 NET_RENDERERS = ["eni", "sysconfig", "netplan"]
+ENI_INTERFACE_TEMPLATE = """
+    auto <LINK_NAME>
+    iface <LINK_NAME> inet static
+        hwaddress ether <LINK_MAC_ADDRESS>
+        address <IP_ADDRESS>
+        mtu <MTU>
+        netmask <NETMASK>
+        gateway <GATEWAY>
+        dns-nameservers <DNS>
+"""
+SYS_CLASS_NET = "/sys/class/net/"
+DEFAULT_PRIMARY_INTERFACE = 'eth0'
 
 
 class Ubuntu14Distro(object):
@@ -29,22 +44,35 @@ class Ubuntu14Distro(object):
         self.distro_family = "debian"
         self.service_binary = "service"
         self.network_implementation = "eni"
+        self.config_file = "/etc/network/interfaces"
+        self.dns_config_file = "/etc/resolv.conf"
+
+    def _get_static_interface_template(self):
+        return ENI_INTERFACE_TEMPLATE
 
     def set_network_config_file(self, network_data):
-        # use /etc/network/interfaces.d/50-cloud-init.conf
-        # to write the IP config
-        # use /etc/resolv.conf for DNS
+        net_interfaces = get_os_net_interfaces()
+        LOG(net_interfaces)
         pass
 
     def apply_network_config(self, network_data):
-        # use ip
-        # get the link name from the MAC address
-        # ip link set <link_name> mtu=$MTU
+        # ip link set <link_name> mtu=<mtu>
         # ip link set <link_name> up
         # ip addr flush dev <link_name>
         # ip addr add <ip>/<prefixlen> dev <link_name>
         # ip route add default via <gateway> dev <link_name>
         pass
+
+
+def get_os_net_interfaces():
+    try:
+        devs = os.listdir(SYS_CLASS_NET)
+    except OSError as e:
+        if e.errno == errno.ENOENT:
+            devs = []
+        else:
+            raise
+    return devs
 
 
 def get_example_metadata():
