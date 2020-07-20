@@ -51,22 +51,29 @@ class Ubuntu14Distro(object):
         return ENI_INTERFACE_TEMPLATE
 
     def set_network_config_file(self, network_data):
-        net_interfaces = get_os_net_interfaces()
-        LOG(net_interfaces)
         pass
 
     def apply_network_config(self, network_data):
-        # link need to be down before being renamed
-        # ip link set dev <link_name> down
-        # ip link set dev <link_name> name <new_link_name>
+        links = []
+        for link in network_data.links:
+            os_link_name = get_os_net_interface_by_mac(
+                link["ethernet_mac_address"])
+            if not os_link_name:
+                raise Exception(
+                    "Link could not be found " + link["ethernet_mac_address"])
+            link["os_link_name"] = os_link_name
+            links[link["id"]] = link
 
-        # ip link set dev <link_name> mtu <mtu>
-        # ip link set dev <link_name> up
-        # ip addr flush dev <link_name>
+            LOG("Apply config for link: " + os_link_name)
+            base_cmd = ["ip", "link", "set", "dev", os_link_name]
+            execute_process(base_cmd + ["mtu", link["mtu"]])
+            execute_process(base_cmd + ["up"])
 
-        # ip addr add <ip>/<prefixlen> dev <link_name>
-        # ip route add <network/prefixlen> via <gateway> dev <link_name>
-        pass
+        for network in network_data.networks:
+            LOG("Apply config for link: " + network["id"])
+            # ip addr flush dev <link_name>
+            # ip addr add <ip>/<prefixlen> dev <link_name>
+            # ip route add <network/prefixlen> via <gateway> dev <link_name>
 
 
 def get_os_net_interfaces():
