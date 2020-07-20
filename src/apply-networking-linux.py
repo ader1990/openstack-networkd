@@ -90,7 +90,7 @@ class Ubuntu14Distro(object):
 
             ip_address = network["ip_address"]
             ip_netmask = network["netmask"]
-            prefixlen = str(mask_to_net_prefix(ip_netmask))
+            prefixlen = str(mask_to_net_prefix(str(ip_netmask)))
             addr_add_cmd = ["ip", "addr", "add",
                             ip_address + "/" + prefixlen, "dev", os_link_name]
             out, err, exit_code = execute_process(addr_add_cmd, shell=False)
@@ -117,7 +117,7 @@ def ipv4_mask_to_net_prefix(mask):
         except ValueError:
             pass
     else:
-        raise TypeError("mask '%s' is not a string or int")
+        raise TypeError("mask '%s' is not a string or int" % mask)
 
     if '.' not in mask:
         raise ValueError("netmask '%s' does not contain a '.'" % mask)
@@ -144,7 +144,7 @@ def ipv6_mask_to_net_prefix(mask):
         except ValueError:
             pass
     else:
-        raise TypeError("mask '%s' is not a string or int")
+        raise TypeError("mask '%s' is not a string or int" % mask)
 
     if ':' not in mask:
         raise ValueError("mask '%s' does not have a ':'")
