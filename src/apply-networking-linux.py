@@ -301,10 +301,10 @@ def retry_decorator(max_retry_count=1, sleep_time=5):
                 try:
                     return f(*args, **kwargs)
                 except Exception:
+                    try_count = try_count + 1
                     if try_count == max_retry_count:
                         raise
 
-                    try_count = try_count + 1
                     time.sleep(sleep_time)
         return inner
     return wrapper
