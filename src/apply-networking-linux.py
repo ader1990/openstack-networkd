@@ -95,18 +95,18 @@ class Ubuntu14Distro(object):
                             ip_address + "/" + prefixlen, "dev", os_link_name]
             out, err, exit_code = execute_process(addr_add_cmd, shell=False)
             if exit_code:
-                raise Exception("IP could not be set. Err: " + err)
+                raise Exception("IP could not be set. Err: %s" % err)
 
             for route in network["routes"]:
-                network_address = network["network"]
-                gateway = network["gateway"]
+                network_address = route["network"]
+                gateway = route["gateway"]
                 prefixlen = str(mask_to_net_prefix(str(route["netmask"])))
                 route_add_cmd = ["ip", "route", "add",
                                  network_address + "/" + prefixlen, "via", gateway,
                                  "dev", os_link_name]
                 out, err, exit_code = execute_process(route_add_cmd, shell=False)
                 if exit_code:
-                    raise Exception("Route could not be set. Err: " + err)
+                    raise Exception("Route could not be set. Err: %s" % err)
 
 
 def ipv4_mask_to_net_prefix(mask):
