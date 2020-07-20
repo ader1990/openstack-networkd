@@ -88,13 +88,7 @@ def get_os_net_interface_by_mac(mac_address):
     MAC ADDRESS should be in this format: fa:16:3e:93:69:32
     """
 
-    try:
-        devs = os.listdir(SYS_CLASS_NET)
-    except OSError as e:
-        if e.errno == errno.ENOENT:
-            return None
-        else:
-            raise
+    devs = get_os_net_interfaces()
 
     if not devs:
         return None
@@ -102,8 +96,9 @@ def get_os_net_interface_by_mac(mac_address):
     for dev in devs:
         mac_file_path = (
             os.path.join(os.path.join(SYS_CLASS_NET, dev), 'address'))
-        with open(mac_file_path, 'rb') as mac_file:
-            if mac_address == mac_file.read():
+        with open(mac_file_path, 'r') as mac_file:
+            existent_mac = mac_file.read().strip().rstrip()
+            if mac_address == existent_mac:
                 return dev
 
 
