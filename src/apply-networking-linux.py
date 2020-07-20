@@ -12,15 +12,13 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import base64
 import errno
 import json
 import os
 import subprocess
 import sys
 import time
-
-from base64 import b64decode
-
 
 NET_RENDERERS = ["eni", "sysconfig", "netplan"]
 ENI_INTERFACE_TEMPLATE = """
@@ -34,7 +32,46 @@ ENI_INTERFACE_TEMPLATE = """
         dns-nameservers <DNS>
 """
 SYS_CLASS_NET = "/sys/class/net/"
-DEFAULT_PRIMARY_INTERFACE = 'eth0'
+
+EXAMPLE_JSON_METADATA = """
+{
+    "links": [
+        {
+            "id": "tapef0ec56c-88",
+            "mtu": 1420,
+            "ethernet_mac_address": "fa:16:3e:93:69:32"
+        }
+    ],
+    "networks": [
+        {
+            "id": "network0",
+            "link": "tapef0ec56c-88",
+            "type": "ipv4",
+            "netmask": "255.255.255.0",
+            "ip_address": "4.5.4.4",
+            "routes": [
+                {
+                    "network": "0.0.0.0",
+                    "netmask": "0.0.0.0",
+                    "gateway": "4.5.4.1"
+                }
+            ],
+            "services": [
+                {
+                    "type": "dns",
+                    "address": "8.8.8.8"
+                }
+            ]
+        }
+    ],
+    "services": [
+        {
+            "type": "dns",
+            "address": "1.1.1.1"
+        }
+    ]
+}
+"""
 
 
 class Ubuntu14Distro(object):
@@ -230,7 +267,7 @@ def get_os_net_interface_by_mac(mac_address):
 
 
 def get_example_metadata():
-    return "ewogICAgImxpbmtzIjogWwogICAgICAgIHsKICAgICAgICAgICAgImlkIjogInRhcGVmMGVjNTZjLTg4IiwKICAgICAgICAgICAgInZpZl9pZCI6ICJlZjBlYzU2Yy04ODIzLTQ1MWItYTllNy0zMjdlY2FkM2VjMDUiLAogICAgICAgICAgICAidHlwZSI6ICJvdnMiLAogICAgICAgICAgICAibXR1IjogMTUwMCwKICAgICAgICAgICAgImV0aGVybmV0X21hY19hZGRyZXNzIjogImZhOjE2OjNlOjkzOjY5OjMyIgogICAgICAgIH0KICAgIF0sCiAgICAibmV0d29ya3MiOiBbCiAgICAgICAgewogICAgICAgICAgICAiaWQiOiAibmV0d29yazEiLAogICAgICAgICAgICAibGluayI6ICJ0YXBlZjBlYzU2Yy04OCIsCiAgICAgICAgICAgICJuZXR3b3JrX2lkIjogIjA5MzY0Mjk2LTFmMjAtNGZjNi05ZTRkLTkwYjBkODA2ODMwYSIsCiAgICAgICAgICAgICJ0eXBlIjogImlwdjQiLAogICAgICAgICAgICAibmV0bWFzayI6ICIyNTUuMjU1LjI1NS4yMjQiLAogICAgICAgICAgICAiaXBfYWRkcmVzcyI6ICI0LjUuNC40IiwKICAgICAgICAgICAgInJvdXRlcyI6IFsKICAgICAgICAgICAgICAgIHsKICAgICAgICAgICAgICAgICAgICAibmV0d29yayI6ICIwLjAuMC4wIiwKICAgICAgICAgICAgICAgICAgICAibmV0bWFzayI6ICIwLjAuMC4wIiwKICAgICAgICAgICAgICAgICAgICAiZ2F0ZXdheSI6ICI0LjUuMS4xIgogICAgICAgICAgICAgICAgfQogICAgICAgICAgICBdLAogICAgICAgICAgICAic2VydmljZXMiOiBbCiAgICAgICAgICAgICAgICB7CiAgICAgICAgICAgICAgICAgICAgInR5cGUiOiAiZG5zIiwKICAgICAgICAgICAgICAgICAgICAiYWRkcmVzcyI6ICI4LjguOC44IgogICAgICAgICAgICAgICAgfQogICAgICAgICAgICBdCiAgICAgICAgfQogICAgXSwKICAgICJzZXJ2aWNlcyI6IFsKICAgICAgICB7CiAgICAgICAgICAgICJ0eXBlIjogImRucyIsCiAgICAgICAgICAgICJhZGRyZXNzIjogIjEuMS4xLjEiCiAgICAgICAgfQogICAgXQp9Cg===="
+    return base64.b64encode(EXAMPLE_JSON_METADATA)
     # return "eyJzZXJ2aWNlcyI6IFt7InR5cGUiOiAiZG5zIiwgImFkZHJlc3MiOiAiOC44LjguOCJ9XSwgIm5ldHdvcmtzIjogW3sibmV0d29ya19pZCI6ICI4MWQ1MjkyZS03OTBhLTRiMWEtOGRmZi1mNmRmZmVjMDY2ZmIiLCAidHlwZSI6ICJpcHY0IiwgInNlcnZpY2VzIjogW3sidHlwZSI6ICJkbnMiLCAiYWRkcmVzcyI6ICI4LjguOC44In1dLCAibmV0bWFzayI6ICIyNTUuMjU1LjI1NS4wIiwgImxpbmsiOiAidGFwODU0NDc3YzgtYmIiLCAicm91dGVzIjogW3sibmV0bWFzayI6ICIwLjAuMC4wIiwgIm5ldHdvcmsiOiAiMC4wLjAuMCIsICJnYXRld2F5IjogIjE5Mi4xNjguNS4xIn1dLCAiaXBfYWRkcmVzcyI6ICIxOTIuMTY4LjUuMTciLCAiaWQiOiAibmV0d29yazAifV0sICJsaW5rcyI6IFt7ImV0aGVybmV0X21hY19hZGRyZXNzIjogIjAwOjE1OjVEOjY0Ojk4OjYwIiwgIm10dSI6IDE0NTAsICJ0eXBlIjogIm92cyIsICJpZCI6ICJ0YXA4NTQ0NzdjOC1iYiIsICJ2aWZfaWQiOiAiODU0NDc3YzgtYmJmZS00OGY1LTg5NGQtODBmMGNkZmNjYTYwIn1dfQ=="
 
 
@@ -270,7 +307,7 @@ def retry_decorator(max_retry_count=1, sleep_time=5):
 
 
 def parse_fron_b64_json(b64json_data):
-    json_data = b64decode(b64json_data)
+    json_data = base64.b64decode(b64json_data)
     if type(json_data) is bytes:
         json_data = json_data.decode()
     return json.loads(json_data)
