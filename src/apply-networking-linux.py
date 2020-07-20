@@ -97,7 +97,16 @@ class Ubuntu14Distro(object):
             if exit_code:
                 raise Exception("IP could not be set. Err: " + err)
 
-            # ip route add <network/prefixlen> via <gateway> dev <link_name>
+            for route in network["routes"]:
+                network_address = network["network"]
+                gateway = network["gateway"]
+                prefixlen = str(mask_to_net_prefix(str(route["netmask"])))
+                route_add_cmd = ["ip", "route", "add",
+                                 network_address + "/" + prefixlen, "via", gateway,
+                                 "dev", os_link_name]
+                out, err, exit_code = execute_process(route_add_cmd, shell=False)
+                if exit_code:
+                    raise Exception("Route could not be set. Err: " + err)
 
 
 def ipv4_mask_to_net_prefix(mask):
