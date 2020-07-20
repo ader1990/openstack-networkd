@@ -12,12 +12,28 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import abc
 import json
 import subprocess
 import sys
 import time
 
 from base64 import b64decode
+
+
+class Ubuntu14Distro(metaclass=abc.ABCMeta):
+
+    def __init__(self):
+        self.distro_name = "ubuntu_14_04"
+        self.distro_family = "debian"
+        self.service_binary = "service"
+        self.network_implementation = "interfaces"
+
+    def set_network_config_file(self, network_data):
+        pass
+
+    def apply_network_config(self, network_data):
+        pass
 
 
 def get_example_metadata():
@@ -67,13 +83,19 @@ def LOG(msg):
 
 
 @retry_decorator()
-def set_network_config(b64json_network_data):
+def configure_network(b64json_network_data):
     network_data = parse_fron_b64_json(b64json_network_data)
     LOG(network_data)
-    return
 
+    if not network_data:
+        LOG("Network data is empty")
+        return
+
+    DISTRO = Ubuntu14Distro()
+    DISTRO.set_network_config_file(network_data)
+    DISTRO.apply_network_config(network_data)
 
 data = sys.argv[1]
-#data = get_example_metadata()
+# data = get_example_metadata()
 
-set_network_config(data)
+configure_network(data)
