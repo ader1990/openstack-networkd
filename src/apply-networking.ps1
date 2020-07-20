@@ -136,7 +136,7 @@ function Get-ExampleNetworkData {
 function Parse-NetworkConfig {
     param($RawNetworkConfig)
 
-    $fromBase64 = [Text.Encoding]::Utf8.GetString([Convert]::FromBase64String($RawNetworkConfig))
+    $fromBase64 = [Text.Encoding]::ASCII.GetString([Convert]::FromBase64String($RawNetworkConfig))
 
     $networkConfig = $fromBase64 | ConvertFrom-Json
 
