@@ -107,6 +107,13 @@ EXAMPLE_JSON_METADATA = """
 }
 """
 
+NETPLAN_ROOT_CONFIG = {
+    "network": {
+        "version": 2,
+        "ethernets": []
+    }
+}
+
 
 class DebianInterfacesDistro(object):
 
@@ -259,6 +266,57 @@ class DebianInterfacesd50Distro(DebianInterfacesDistro):
     def __init__(self):
         super(DebianInterfacesd50Distro, self).__init__()
         self.config_file = "/etc/network/interfaces.d/50-cloud-init.cfg"
+
+
+class NetplanDistro(DebianInterfacesDistro):
+
+    def __init__(self):
+        super(NetplanDistro, self).__init__()
+        self.config_file = "/etc/netplan/50-cloud-init.yaml"
+
+    def set_network_config_file(self, network_data):
+        ethernets = {}
+
+        links = {}
+        for link in network_data["links"]:
+            os_link_name = get_os_net_interface_by_mac(
+                link["ethernet_mac_address"])
+            if not os_link_name:
+                raise Exception(
+                    "Link could not be found " + link["ethernet_mac_address"])
+            link["os_link_name"] = os_link_name
+            links[link["id"]] = link
+
+        for network in network_data["networks"]:
+            LOG("Processing network %s" % network["id"])
+            os_link_name = links[network["link"]]["os_link_name"]
+            ethernets[os_link_name] = {
+                "addresses": [],
+                "match": {
+                    "macaddress": ""
+                },
+                "mtu": 1500,
+                "nameservers": {
+                    "addresses": [],
+                    "search": []
+                },
+                "routes": {
+                    "to": "",
+                    "via": ""
+                },
+                "set-name": ""
+            }
+
+        netplan_config = NETPLAN_ROOT_CONFIG
+        netplan_config["network"]["ethernets"] = ethernets
+
+        import yaml
+        netplan_config_str = yaml.dump(netplan_config)
+        LOG(netplan_config_str)
+
+        LOG("Writing config to %s" % self.config_file)
+        # with open(self.config_file, 'w') as config_file:
+        #    config_file.write(netplan_config_str)
 
 
 def get_os_distribution():
@@ -466,6 +524,8 @@ def configure_network(b64json_network_data):
             os_distrib_str.find("debian 10.") == 0 or
             os_distrib_str == "Ubuntu 16.04 xenial"):
         DISTRO = DebianInterfacesd50Distro()
+    elif (os_distrib_str == "Ubuntu 18.04 bionic"):
+        DISTRO = NetplanDistro()
     else:
         raise Exception("Distro %s not supported" % os_distrib_str)
 
