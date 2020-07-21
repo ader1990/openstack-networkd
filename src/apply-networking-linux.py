@@ -16,24 +16,25 @@ import base64
 import errno
 import json
 import os
+import string
 import subprocess
 import sys
 import time
 
 NET_RENDERERS = ["eni", "sysconfig", "netplan"]
 ENI_INTERFACE_STATIC_TEMPLATE = """
-    auto <LINK_NAME>
-    iface <LINK_NAME> inet<FAMILY> <TYPE>
-        hwaddress ether <LINK_MAC_ADDRESS>
-        address <IP_ADDRESS>
-        mtu <MTU>
-        netmask <NETMASK>
-        gateway <GATEWAY>
-        dns-nameservers <DNS>
+    auto $name
+    iface $name inet$family $type
+        hwaddress ether $mac_address
+        address $address
+        mtu $mtu
+        netmask $netmask
+        gateway $gateway
+        dns-nameservers $dns
 """
 ENI_INTERFACE_DEFAULT_TEMPLATE = """
-    auto <LINK_NAME>
-    iface <LINK_NAME> inet<FAMILY> <TYPE>
+    auto $name
+    iface $name inet$family $type
 """
 SYS_CLASS_NET = "/sys/class/net/"
 
@@ -107,11 +108,14 @@ class Ubuntu14Distro(object):
         LOG("Running on %s." % self.distro_name)
 
     def set_network_config_file(self, network_data):
-        template_network_data = {}
-        template_network_data["lo"] = {
+        template_string = ""
+        lo_data = {
             "name": "lo",
-            "type": "loopback"
+            "type": "loopback",
+            "family": ""
         }
+        template_string += (
+            format_template(ENI_INTERFACE_DEFAULT_TEMPLATE, lo_data) + "\n")
 
         links = {}
         for link in network_data["links"]:
@@ -145,7 +149,7 @@ class Ubuntu14Distro(object):
             if not gateway:
                 raise "No gateways have been found"
 
-            template_network_data[network["id"]] = {
+            template_network_data = {
                 "name": os_link_name,
                 "type": net_type,
                 "family": family,
@@ -153,11 +157,15 @@ class Ubuntu14Distro(object):
                 "mtu": links[network["link"]]["mtu"],
                 "address": network["ip_address"],
                 "netmask": network["netmask"],
-                "gateway": network["gateway"],
-                "dns-nameservers": "8.8.8.8"
+                "gateway": gateway,
+                "dns": "8.8.8.8"
             }
+            template_string += (
+                format_template(ENI_INTERFACE_STATIC_TEMPLATE,
+                                template_network_data))
+            template_string += "\n"
 
-            LOG(template_network_data)
+        LOG(template_string)
 
     def apply_network_config(self, network_data):
         links = {}
@@ -226,6 +234,11 @@ class Ubuntu14Distro(object):
                                                       shell=False)
                 if exit_code:
                     raise Exception("Route could not be set. Err: %s" % err)
+
+
+def format_template(template, data):
+    template = string.Template(template)
+    return template.safe_substitute(**data)
 
 
 def is_python_3():
