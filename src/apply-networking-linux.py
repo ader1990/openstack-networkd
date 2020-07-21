@@ -388,7 +388,8 @@ class CentOSDistro(DebianInterfacesDistro):
                 "init_ipv6": "no",
                 "address_ipv6": "",
                 "gateway_ipv6": "",
-                "netmask_ipv6": ""
+                "netmask_ipv6": "",
+                "dns": ""
             }
 
         for network in network_data["networks"]:
@@ -430,7 +431,7 @@ class CentOSDistro(DebianInterfacesDistro):
                 ethernets[os_link_name]["gateway"] = gateway
                 ethernets[os_link_name]["netmask"] = netmask
                 ethernets[os_link_name]["address"] = network["ip_address"]
-            ethernets[os_link_name]["dns"] = dns_template
+            ethernets[os_link_name]["dns"] += dns_template
 
         for os_link_name in ethernets.keys():
             net_config_file = self.config_file % os_link_name
