@@ -117,10 +117,10 @@ class Ubuntu14Distro(object):
                 raise Exception("Link could not be set to up state")
 
         for network in network_data["networks"]:
-            LOG("Apply network " + network["id"] + " for " + network["link"])
             os_link_name = links[network["link"]]["os_link_name"]
             if not os_link_name:
-                raise Exception("Link not found for network")
+                raise Exception("Link not found for net %s" % network["id"])
+            LOG("Apply network " + network["id"] + " for " + os_link_name)
 
             flush_cmd = ["ip", "addr", "flush", "dev", os_link_name]
             out, err, exit_code = execute_process(flush_cmd, shell=False)
