@@ -21,15 +21,19 @@ import sys
 import time
 
 NET_RENDERERS = ["eni", "sysconfig", "netplan"]
-ENI_INTERFACE_TEMPLATE = """
+ENI_INTERFACE_STATIC_TEMPLATE = """
     auto <LINK_NAME>
-    iface <LINK_NAME> inet static
+    iface <LINK_NAME> inet<FAMILY> <TYPE>
         hwaddress ether <LINK_MAC_ADDRESS>
         address <IP_ADDRESS>
         mtu <MTU>
         netmask <NETMASK>
         gateway <GATEWAY>
         dns-nameservers <DNS>
+"""
+ENI_INTERFACE_DEFAULT_TEMPLATE = """
+    auto <LINK_NAME>
+    iface <LINK_NAME> inet<FAMILY> <TYPE>
 """
 SYS_CLASS_NET = "/sys/class/net/"
 
@@ -98,19 +102,62 @@ class Ubuntu14Distro(object):
 
     def __init__(self):
         self.distro_name = "ubuntu_14_04"
-        self.distro_family = "debian"
-        self.service_binary = "service"
-        self.network_implementation = "eni"
         self.config_file = "/etc/network/interfaces"
-        self.dns_config_file = "/etc/resolv.conf"
 
         LOG("Running on %s." % self.distro_name)
 
-    def _get_static_interface_template(self):
-        return ENI_INTERFACE_TEMPLATE
-
     def set_network_config_file(self, network_data):
-        pass
+        network_data = {}
+        network_data["lo"] = {
+            "name": "lo",
+            "type": "loopback"
+        }
+
+        links = {}
+        for link in network_data["links"]:
+            os_link_name = get_os_net_interface_by_mac(
+                link["ethernet_mac_address"])
+            if not os_link_name:
+                raise Exception(
+                    "Link could not be found " + link["ethernet_mac_address"])
+            link["os_link_name"] = os_link_name
+            links[link["id"]] = link
+
+        for network in network_data["networks"]:
+            LOG("Processing network %s" % network["id"])
+            os_link_name = links[network["link"]]["os_link_name"]
+            if not os_link_name:
+                raise Exception("Link not found for net %s" % network["id"])
+
+            net_type = "static"
+            family = ""
+            if network["type"] == "ipv6":
+                family = "6"
+
+            gateway = None
+            for route in network["routes"]:
+                route_gateway = route["gateway"]
+                prefixlen = str(mask_to_net_prefix(str(route["netmask"])))
+                if prefixlen == "0":
+                    gateway = route_gateway
+                    break
+
+            if not gateway:
+                raise "No gateways have been found"
+
+            network_data[network["id"]] = {
+                "name": os_link_name,
+                "type": net_type,
+                "family": family,
+                "mac_address": links[network["link"]]["ethernet_mac_address"],
+                "mtu": links[network["link"]]["mtu"],
+                "address": network["ip_address"],
+                "netmask": network["netmask"],
+                "gateway": network["gateway"],
+                "dns-nameservers": "8.8.8.8"
+            }
+
+            LOG(network_data)
 
     def apply_network_config(self, network_data):
         links = {}
