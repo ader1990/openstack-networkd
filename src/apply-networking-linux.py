@@ -108,10 +108,12 @@ EXAMPLE_JSON_METADATA = """
 """
 
 
-class Ubuntu14Distro(object):
+class Ubuntu14Debian8Distro(object):
 
     def __init__(self):
         self.config_file = "/etc/network/interfaces"
+        self.default_template = ENI_INTERFACE_DEFAULT_TEMPLATE
+        self.static_template = ENI_INTERFACE_STATIC_TEMPLATE
 
     def set_network_config_file(self, network_data):
         template_string = ENI_INTERFACE_HEADER + "\n"
@@ -121,7 +123,7 @@ class Ubuntu14Distro(object):
             "family": ""
         }
         template_string += (
-            format_template(ENI_INTERFACE_DEFAULT_TEMPLATE, lo_data) + "\n")
+            format_template(self.default_template, lo_data) + "\n")
 
         links = {}
         for link in network_data["links"]:
@@ -176,8 +178,7 @@ class Ubuntu14Distro(object):
                 "dns": " ".join(dns)
             }
             template_string += (
-                format_template(ENI_INTERFACE_STATIC_TEMPLATE,
-                                template_network_data))
+                format_template(self.static_template, template_network_data))
             template_string += "\n"
 
         LOG("Writing config to %s" % self.config_file)
@@ -251,6 +252,13 @@ class Ubuntu14Distro(object):
                                                       shell=False)
                 if exit_code:
                     raise Exception("Route could not be set. Err: %s" % err)
+
+
+class Debian9Distro(Ubuntu14Debian8Distro):
+
+    def __init__(self):
+        super(Debian9Distro, self).__init__()
+        self.config_file = "/etc/network/interfaces.d/5-cloud-init.cfg"
 
 
 def get_os_distribution():
@@ -441,7 +449,7 @@ def LOG(msg):
 @retry_decorator()
 def configure_network(b64json_network_data):
     network_data = parse_fron_b64_json(b64json_network_data)
-    LOG(network_data)
+    # LOG(network_data)
 
     if not network_data:
         LOG("Network data is empty")
@@ -451,8 +459,11 @@ def configure_network(b64json_network_data):
     os_distrib_str = " ".join(os_distrib)
     LOG("Running on %s" % os_distrib_str)
 
-    if (os_distrib_str == "Ubuntu 14.04 trusty"):
-        DISTRO = Ubuntu14Distro()
+    if (os_distrib_str == "Ubuntu 14.04 trusty" or
+            os_distrib_str.find("debian 8.") == 0):
+        DISTRO = Ubuntu14Debian8Distro()
+    elif (os_distrib_str.find("debian 9") == 0):
+        DISTRO = Debian9Distro()
     else:
         raise Exception("Distro %s not supported" % os_distrib_str)
 
