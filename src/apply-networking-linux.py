@@ -114,6 +114,23 @@ NETPLAN_ROOT_CONFIG = {
     }
 }
 
+CENTOS_STATIC_TEMPLATE = """
+BOOTPROTO=none
+DEFROUTE=yes
+DEVICE=$name
+HWADDR=$mac_address
+IPADDR=$address
+MTU=$mtu
+NETMASK=$netmask
+ONBOOT=yes
+TYPE=Ethernet
+USERCTL=no
+IPV4_FAILURE_FATAL=no
+IPV6INIT=$init_ipv6
+IPV6ADDR=$address_ipv6
+IPV6_DEFAULTGW=$gateway_ipv6
+"""
+
 
 class DebianInterfacesDistro(object):
 
@@ -346,7 +363,69 @@ class CentOSDistro(DebianInterfacesDistro):
         self.config_file = "/etc/sysconfig/network-interfaces/ifcfg-%s"
 
     def set_network_config_file(self, network_data):
-        pass
+        ethernets = {}
+        links = {}
+        for link in network_data["links"]:
+            os_link_name = get_os_net_interface_by_mac(
+                link["ethernet_mac_address"])
+            if not os_link_name:
+                raise Exception(
+                    "Link could not be found " + link["ethernet_mac_address"])
+            link["os_link_name"] = os_link_name
+            links[link["id"]] = link
+            ethernets[os_link_name] = {
+                "name": os_link_name,
+                "mac_address": link["ethernet_mac_address"],
+                "mtu": link["mtu"],
+                "gateway": "",
+                "netmask": "",
+                "address": "",
+                "init_ipv6": "no",
+                "address_ipv6": "",
+                "gateway_ipv6": "",
+                "netmask_ipv6": ""
+            }
+
+        for network in network_data["networks"]:
+            LOG("Processing network %s" % network["id"])
+            os_link_name = links[network["link"]]["os_link_name"]
+            if not os_link_name:
+                raise Exception("Link not found for net %s" % network["id"])
+
+            family = ""
+            if network["type"] == "ipv6":
+                family = "6"
+
+            gateway = None
+            for route in network["routes"]:
+                route_gateway = route["gateway"]
+                prefixlen = str(mask_to_net_prefix(str(route["netmask"])))
+                if prefixlen == "0":
+                    gateway = route_gateway
+                    break
+
+            if not gateway:
+                raise "No gateways have been found"
+
+            netmask = network["netmask"]
+            if family == "6":
+                ethernets[os_link_name]["init_ipv6"] = "yes"
+                ethernets[os_link_name]["gateway_ipv6"] = gateway
+                ethernets[os_link_name]["netmask_ipv6"] = netmask
+                ethernets[os_link_name]["address_ipv6"] = network["ip_address"]
+            else:
+                ethernets[os_link_name]["gateway"] = gateway
+                ethernets[os_link_name]["netmask"] = netmask
+                ethernets[os_link_name]["address"] = network["ip_address"]
+
+        for os_link_name in ethernets.keys():
+            net_config_file = self.config_file % os_link_name
+            LOG("Writing config to %s" % net_config_file)
+            template_string = format_template(CENTOS_STATIC_TEMPLATE,
+                                              ethernets[os_link_name])
+            LOG(template_string)
+            # with open(net_config_file, 'w') as config_file:
+            #     config_file.write(template_string)
 
 
 def get_os_distribution():
