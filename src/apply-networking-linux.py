@@ -16,6 +16,7 @@ import base64
 import errno
 import json
 import os
+import platform
 import string
 import subprocess
 import sys
@@ -110,10 +111,7 @@ EXAMPLE_JSON_METADATA = """
 class Ubuntu14Distro(object):
 
     def __init__(self):
-        self.distro_name = "ubuntu_14_04"
         self.config_file = "/etc/network/interfaces"
-
-        LOG("Running on %s." % self.distro_name)
 
     def set_network_config_file(self, network_data):
         template_string = ENI_INTERFACE_HEADER + "\n"
@@ -253,6 +251,10 @@ class Ubuntu14Distro(object):
                                                       shell=False)
                 if exit_code:
                     raise Exception("Route could not be set. Err: %s" % err)
+
+
+def get_os_distribution():
+    return platform.dist()
 
 
 def format_template(template, data):
@@ -445,7 +447,15 @@ def configure_network(b64json_network_data):
         LOG("Network data is empty")
         return
 
-    DISTRO = Ubuntu14Distro()
+    os_distrib = get_os_distribution()
+    os_distrib_str = " ".join(os_distrib)
+    LOG("Running on %s" % os_distrib_str)
+
+    if (os_distrib_str == "Ubuntu 14.04 trusty"):
+        DISTRO = Ubuntu14Distro()
+    else:
+        raise Exception("Distro %s not supported" % os_distrib_str)
+
     DISTRO.set_network_config_file(network_data)
     DISTRO.apply_network_config(network_data)
 
