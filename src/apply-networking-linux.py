@@ -286,16 +286,12 @@ class NetplanDistro(DebianInterfacesDistro):
                     "Link could not be found " + link["ethernet_mac_address"])
             link["os_link_name"] = os_link_name
             links[link["id"]] = link
-
-        for network in network_data["networks"]:
-            LOG("Processing network %s" % network["id"])
-            os_link_name = links[network["link"]]["os_link_name"]
             ethernets[os_link_name] = {
                 "addresses": [],
                 "match": {
-                    "macaddress": ""
+                    "macaddress": link["ethernet_mac_address"]
                 },
-                "mtu": 1500,
+                "mtu": link["mtu"],
                 "nameservers": {
                     "addresses": [],
                     "search": []
@@ -304,14 +300,20 @@ class NetplanDistro(DebianInterfacesDistro):
                     "to": "",
                     "via": ""
                 },
-                "set-name": ""
+                "set-name": os_link_name
             }
+
+        for network in network_data["networks"]:
+            LOG("Processing network %s" % network["id"])
+            os_link_name = links[network["link"]]["os_link_name"]
 
         netplan_config = NETPLAN_ROOT_CONFIG
         netplan_config["network"]["ethernets"] = ethernets
 
         import yaml
-        netplan_config_str = yaml.dump(netplan_config)
+        netplan_config_str = yaml.dump(netplan_config, line_break="\n",
+                                       indent=4, default_flow_style=False,
+                                       explicit_start=True, explicit_end=True)
         LOG(netplan_config_str)
 
         LOG("Writing config to %s" % self.config_file)
