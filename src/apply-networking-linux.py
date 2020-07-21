@@ -39,7 +39,7 @@ EXAMPLE_JSON_METADATA = """
         {
             "id": "tapef0ec56c-88",
             "mtu": 1420,
-            "ethernet_mac_address": "fa:16:3e:93:69:32"
+            "ethernet_mac_address": "fa:16:3e:7a:61:64"
         }
     ],
     "networks": [
@@ -48,12 +48,12 @@ EXAMPLE_JSON_METADATA = """
             "link": "tapef0ec56c-88",
             "type": "ipv4",
             "netmask": "255.255.255.0",
-            "ip_address": "4.5.4.4",
+            "ip_address": "192.168.5.22",
             "routes": [
                 {
                     "network": "0.0.0.0",
                     "netmask": "0.0.0.0",
-                    "gateway": "4.5.4.1"
+                    "gateway": "192.168.5.1"
                 }
             ],
             "services": [
@@ -83,6 +83,8 @@ class Ubuntu14Distro(object):
         self.network_implementation = "eni"
         self.config_file = "/etc/network/interfaces"
         self.dns_config_file = "/etc/resolv.conf"
+
+        LOG("Running on %s." % self.distro_name)
 
     def _get_static_interface_template(self):
         return ENI_INTERFACE_TEMPLATE
