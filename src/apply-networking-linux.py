@@ -154,6 +154,10 @@ class Ubuntu14Distro(object):
             if not gateway:
                 raise "No gateways have been found"
 
+            netmask = network["netmask"]
+            if family == "6":
+                netmask = str(mask_to_net_prefix(str(netmask)))
+
             template_network_data = {
                 "name": os_link_name,
                 "type": net_type,
@@ -161,7 +165,7 @@ class Ubuntu14Distro(object):
                 "mac_address": links[network["link"]]["ethernet_mac_address"],
                 "mtu": links[network["link"]]["mtu"],
                 "address": network["ip_address"],
-                "netmask": network["netmask"],
+                "netmask": netmask,
                 "gateway": gateway,
                 "dns": "8.8.8.8"
             }
