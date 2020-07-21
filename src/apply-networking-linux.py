@@ -258,7 +258,7 @@ class Debian9Distro(Ubuntu14Debian8Distro):
 
     def __init__(self):
         super(Debian9Distro, self).__init__()
-        self.config_file = "/etc/network/interfaces.d/5-cloud-init.cfg"
+        self.config_file = "/etc/network/interfaces.d/50-cloud-init.cfg"
 
 
 def get_os_distribution():
