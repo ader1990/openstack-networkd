@@ -389,7 +389,8 @@ class CentOSDistro(DebianInterfacesDistro):
                 "address_ipv6": "",
                 "gateway_ipv6": "",
                 "netmask_ipv6": "",
-                "dns": ""
+                "dns": "",
+                "dns_nr": 1
             }
 
         for network in network_data["networks"]:
@@ -403,11 +404,12 @@ class CentOSDistro(DebianInterfacesDistro):
                 family = "6"
 
             dns_template = ""
-            dns_nr = 1
             for service in network["services"]:
                 if str(service["type"]) == "dns":
-                    dns_template += "DNS%d=%s\n" % (dns_nr, service["address"])
-                    dns_nr += 1
+                    dns_nr = ethernets[os_link_name]["dns_nr"]
+                    dns_template += ("DNS%d=%s\n" % (
+                        dns_nr, service["address"]))
+                    ethernets[os_link_name]["dns_nr"] += 1
 
             gateway = None
             for route in network["routes"]:
