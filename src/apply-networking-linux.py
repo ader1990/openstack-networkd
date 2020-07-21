@@ -254,10 +254,10 @@ class Ubuntu14Debian8Distro(object):
                     raise Exception("Route could not be set. Err: %s" % err)
 
 
-class Debian9Distro(Ubuntu14Debian8Distro):
+class Debian9And10Distro(Ubuntu14Debian8Distro):
 
     def __init__(self):
-        super(Debian9Distro, self).__init__()
+        super(Debian9And10Distro, self).__init__()
         self.config_file = "/etc/network/interfaces.d/50-cloud-init.cfg"
 
 
@@ -462,8 +462,9 @@ def configure_network(b64json_network_data):
     if (os_distrib_str == "Ubuntu 14.04 trusty" or
             os_distrib_str.find("debian 8.") == 0):
         DISTRO = Ubuntu14Debian8Distro()
-    elif (os_distrib_str.find("debian 9") == 0):
-        DISTRO = Debian9Distro()
+    elif (os_distrib_str.find("debian 9") == 0 or
+            os_distrib_str.find("debian 10.") == 0):
+        DISTRO = Debian9And10Distro()
     else:
         raise Exception("Distro %s not supported" % os_distrib_str)
 
