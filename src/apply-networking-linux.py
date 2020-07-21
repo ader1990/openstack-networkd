@@ -62,6 +62,26 @@ EXAMPLE_JSON_METADATA = """
                     "address": "8.8.8.8"
                 }
             ]
+        },
+        {
+            "id": "network1",
+            "link": "tapef0ec56c-88",
+            "type": "ipv6",
+            "netmask": "ffff:ffff:ffff:ffff::",
+            "ip_address": "fe80::9",
+            "routes": [
+                {
+                    "network": "::",
+                    "netmask": "::",
+                    "gateway": "fe80::1ff:fe23:4567:890a"
+                }
+            ],
+            "services": [
+                {
+                    "type": "dns",
+                    "address": "2001:4860:4860::8888"
+                }
+            ]
         }
     ],
     "services": [
@@ -103,7 +123,7 @@ class Ubuntu14Distro(object):
             link["os_link_name"] = os_link_name
             links[link["id"]] = link
 
-            LOG("Apply config for link: " + os_link_name)
+            LOG("Apply config for link " + os_link_name)
             base_cmd = ["ip", "link", "set", "dev", os_link_name]
 
             mtu_cmd = base_cmd + ["mtu", link["mtu"]]
@@ -122,7 +142,11 @@ class Ubuntu14Distro(object):
                 raise Exception("Link not found for net %s" % network["id"])
             LOG("Apply network " + network["id"] + " for " + os_link_name)
 
-            flush_cmd = ["ip", "addr", "flush", "dev", os_link_name]
+            base_cmd = ["ip"]
+            if str(network["type"]) == "ipv6":
+                base_cmd += ["-6"]
+
+            flush_cmd = base_cmd + ["addr", "flush", "dev", os_link_name]
             out, err, exit_code = execute_process(flush_cmd, shell=False)
             if exit_code:
                 raise Exception("IP could not be flushed")
@@ -130,9 +154,9 @@ class Ubuntu14Distro(object):
             ip_address = network["ip_address"]
             ip_netmask = network["netmask"]
             prefixlen = str(mask_to_net_prefix(str(ip_netmask)))
-            addr_add_cmd = ["ip", "addr", "add",
-                            ip_address + "/" + prefixlen,
-                            "dev", os_link_name]
+            addr_add_cmd = base_cmd + ["addr", "add",
+                                       ip_address + "/" + prefixlen,
+                                       "dev", os_link_name]
             out, err, exit_code = execute_process(addr_add_cmd, shell=False)
             if exit_code:
                 raise Exception("IP could not be set. Err: %s" % err)
@@ -141,9 +165,10 @@ class Ubuntu14Distro(object):
                 network_address = route["network"]
                 gateway = route["gateway"]
                 prefixlen = str(mask_to_net_prefix(str(route["netmask"])))
-                route_add_cmd = ["ip", "route", "add",
-                                 network_address + "/" + prefixlen,
-                                 "via", gateway, "dev", os_link_name]
+                route_add_cmd = base_cmd + ["route", "add",
+                                            network_address + "/" + prefixlen,
+                                            "via", gateway, "dev",
+                                            os_link_name]
                 out, err, exit_code = execute_process(route_add_cmd,
                                                       shell=False)
                 if exit_code:
