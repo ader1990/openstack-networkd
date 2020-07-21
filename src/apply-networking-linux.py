@@ -449,7 +449,8 @@ def configure_network(b64json_network_data):
     DISTRO.set_network_config_file(network_data)
     DISTRO.apply_network_config(network_data)
 
-# data = sys.argv[1]
-data = get_example_metadata()
+data = sys.argv[1]
+
+# data = get_example_metadata()
 
 configure_network(data)
