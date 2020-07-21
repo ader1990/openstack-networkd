@@ -339,6 +339,16 @@ class NetplanDistro(DebianInterfacesDistro):
             config_file.write(netplan_config_str)
 
 
+class CentOSDistro(DebianInterfacesDistro):
+
+    def __init__(self):
+        super(CentOSDistro, self).__init__()
+        self.config_file = "/etc/sysconfig/network-interfaces/ifcfg-%s"
+
+    def set_network_config_file(self, network_data):
+        pass
+
+
 def get_os_distribution():
     return platform.dist()
 
@@ -546,6 +556,8 @@ def configure_network(b64json_network_data):
         DISTRO = DebianInterfacesd50Distro()
     elif (os_distrib_str == "Ubuntu 18.04 bionic"):
         DISTRO = NetplanDistro()
+    elif (os_distrib_str.find("centos ") == 0):
+        DISTRO = CentOSDistro()
     else:
         raise Exception("Distro %s not supported" % os_distrib_str)
 
