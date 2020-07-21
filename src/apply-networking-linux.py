@@ -107,8 +107,8 @@ class Ubuntu14Distro(object):
         LOG("Running on %s." % self.distro_name)
 
     def set_network_config_file(self, network_data):
-        network_data = {}
-        network_data["lo"] = {
+        template_network_data = {}
+        template_network_data["lo"] = {
             "name": "lo",
             "type": "loopback"
         }
@@ -145,7 +145,7 @@ class Ubuntu14Distro(object):
             if not gateway:
                 raise "No gateways have been found"
 
-            network_data[network["id"]] = {
+            template_network_data[network["id"]] = {
                 "name": os_link_name,
                 "type": net_type,
                 "family": family,
@@ -157,7 +157,7 @@ class Ubuntu14Distro(object):
                 "dns-nameservers": "8.8.8.8"
             }
 
-            LOG(network_data)
+            LOG(template_network_data)
 
     def apply_network_config(self, network_data):
         links = {}
