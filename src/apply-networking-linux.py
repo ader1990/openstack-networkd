@@ -333,11 +333,10 @@ class NetplanDistro(DebianInterfacesDistro):
         import yaml
         netplan_config_str = yaml.dump(netplan_config, line_break="\n",
                                        indent=4, default_flow_style=False)
-        LOG(netplan_config_str)
 
         LOG("Writing config to %s" % self.config_file)
-        # with open(self.config_file, 'w') as config_file:
-        #    config_file.write(netplan_config_str)
+        with open(self.config_file, 'w') as config_file:
+            config_file.write(netplan_config_str)
 
 
 def get_os_distribution():
