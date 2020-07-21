@@ -146,10 +146,16 @@ class Ubuntu14Distro(object):
             if str(network["type"]) == "ipv6":
                 base_cmd += ["-6"]
 
-            flush_cmd = base_cmd + ["addr", "flush", "dev", os_link_name]
-            out, err, exit_code = execute_process(flush_cmd, shell=False)
+            flush_addr_cmd = base_cmd + ["addr", "flush", "dev", os_link_name]
+            out, err, exit_code = execute_process(flush_addr_cmd, shell=False)
             if exit_code:
-                raise Exception("IP could not be flushed")
+                raise Exception("IPs could not be flushed")
+
+            flush_route_cmd = base_cmd + ["route", "flush", "dev",
+                                          os_link_name]
+            out, err, exit_code = execute_process(flush_route_cmd, shell=False)
+            if exit_code:
+                raise Exception("Routes could not be flushed")
 
             ip_address = network["ip_address"]
             ip_netmask = network["netmask"]
