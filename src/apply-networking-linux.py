@@ -424,7 +424,6 @@ class CentOSDistro(DebianInterfacesDistro):
             LOG("Writing config to %s" % net_config_file)
             template_string = format_template(CENTOS_STATIC_TEMPLATE,
                                               ethernets[os_link_name])
-            LOG(template_string)
             with open(net_config_file, 'w') as config_file:
                 config_file.write(template_string)
 

@@ -221,7 +221,7 @@ Capabilities:
   * Configures syconfig network config files /etc/sysconfig/network-scripts/ifcfg-%s for CentOS 6, 7 and 8
   * Supported Python version: vanilla Python2 and Python3
   * Supported distros: Ubuntu 14.04, Ubuntu 16.04, Ubuntu 18.04, Debian 8 Jessie, Debian 9 Stretch, Debian 10 Buster, CentOS (6, 7, 8)
-  * TODO: Add support for DNS set on CentOS, if needed
+  * TODO: Add support for DNS set on CentOS. Add support for extra routes or global dns.
   * Notes:
     * On CentOS 8, there is no Python in path, use /usr/libexec/platform-python
     * On Debians, DNS is not properly set by cloud-init
