@@ -304,6 +304,12 @@ class NetplanDistro(DebianInterfacesDistro):
             LOG("Processing network %s" % network["id"])
             os_link_name = links[network["link"]]["os_link_name"]
 
+            ip_address = network["ip_address"]
+            prefixlen = str(mask_to_net_prefix(str(network["netmask"])))
+            ethernets[os_link_name]["addresses"] += [
+                "%s/%s" % (ip_address, prefixlen)
+            ]
+
             dns = []
             for service in network["services"]:
                 if str(service["type"]) == "dns":
