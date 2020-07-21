@@ -216,10 +216,10 @@ Capabilities:
 
   * Sets MTU, IP address and routes using "ip" command
   * Configures Debian interfaces files in /etc/network/interfaces for Ubuntu 14.04 and Debian 8 Jessie
-  * Configures Debian interfaces files in /etc/network/interfaces.d/50-cloud-config for Debian 9 Stretch and Debian 10 Buster
+  * Configures Debian interfaces files in /etc/network/interfaces.d/50-cloud-config for Ubuntu 16.04, Debian 9 Stretch, Debian 10 Buster
   * Supported Python version: vanilla Python2 and Python3
-  * Supported distros: Ubuntu 14.04, Debian 8 Jessie, Debian 9 Stretch, Debian 10 Buster
-  * TODO: Add support for CentOS (6, 7, 8), Ubuntu (16.04, 18.04)
+  * Supported distros: Ubuntu 14.04, Ubuntu 16.04, Debian 8 Jessie, Debian 9 Stretch, Debian 10 Buster
+  * TODO: Add support for CentOS (6, 7, 8), Ubuntu (18.04)
 
 Example:
 
