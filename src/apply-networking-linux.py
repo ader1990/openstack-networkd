@@ -118,6 +118,7 @@ CENTOS_STATIC_TEMPLATE = """
 BOOTPROTO=none
 DEFROUTE=yes
 DEVICE=$name
+IPV4INIT=$init_ipv4
 GATEWAY=$gateway
 HWADDR=$mac_address
 IPADDR=$address
@@ -127,9 +128,14 @@ ONBOOT=yes
 TYPE=Ethernet
 USERCTL=no
 IPV4_FAILURE_FATAL=no
+IPV6_FAILURE_FATAL=no
 IPV6INIT=$init_ipv6
 IPV6ADDR=$address_ipv6
 IPV6_DEFAULTGW=$gateway_ipv6%$name
+DNS1=$dns1_ipv4
+DNS2=$dns2_ipv4
+IPV6_DNS1=$dns1_ipv6
+IPV6_DNS2=$dns2_ipv6
 """
 
 
@@ -381,6 +387,7 @@ class CentOSDistro(DebianInterfacesDistro):
                 "gateway": "",
                 "netmask": "",
                 "address": "",
+                "init_ipv4": "no",
                 "init_ipv6": "no",
                 "address_ipv6": "",
                 "gateway_ipv6": "",
@@ -396,6 +403,11 @@ class CentOSDistro(DebianInterfacesDistro):
             family = ""
             if network["type"] == "ipv6":
                 family = "6"
+
+            dns = []
+            for service in network["services"]:
+                if str(service["type"]) == "dns":
+                    dns += [service["address"]]
 
             gateway = None
             for route in network["routes"]:
@@ -414,10 +426,19 @@ class CentOSDistro(DebianInterfacesDistro):
                 ethernets[os_link_name]["gateway_ipv6"] = gateway
                 ethernets[os_link_name]["netmask_ipv6"] = netmask
                 ethernets[os_link_name]["address_ipv6"] = network["ip_address"]
+                if len(dns) > 0:
+                    ethernets[os_link_name]["dns1_ipv6"] = dns[0]
+                if len(dns) > 1:
+                    ethernets[os_link_name]["dns2_ipv6"] = dns[1]
             else:
+                ethernets[os_link_name]["init_ipv4"] = "yes"
                 ethernets[os_link_name]["gateway"] = gateway
                 ethernets[os_link_name]["netmask"] = netmask
                 ethernets[os_link_name]["address"] = network["ip_address"]
+                if len(dns) > 0:
+                    ethernets[os_link_name]["dns1_ipv4"] = dns[0]
+                if len(dns) > 1:
+                    ethernets[os_link_name]["dns2_ipv4"] = dns[1]
 
         for os_link_name in ethernets.keys():
             net_config_file = self.config_file % os_link_name
