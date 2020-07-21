@@ -129,7 +129,7 @@ USERCTL=no
 IPV4_FAILURE_FATAL=no
 IPV6INIT=$init_ipv6
 IPV6ADDR=$address_ipv6
-IPV6_DEFAULTGW=$gateway_ipv6
+IPV6_DEFAULTGW=$gateway_ipv6%$name
 """
 
 
