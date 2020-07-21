@@ -118,6 +118,7 @@ CENTOS_STATIC_TEMPLATE = """
 BOOTPROTO=none
 DEFROUTE=yes
 DEVICE=$name
+GATEWAY=$gateway
 HWADDR=$mac_address
 IPADDR=$address
 MTU=$mtu
@@ -360,7 +361,7 @@ class CentOSDistro(DebianInterfacesDistro):
 
     def __init__(self):
         super(CentOSDistro, self).__init__()
-        self.config_file = "/etc/sysconfig/network-interfaces/ifcfg-%s"
+        self.config_file = "/etc/sysconfig/network-scripts/ifcfg-%s"
 
     def set_network_config_file(self, network_data):
         ethernets = {}
@@ -424,8 +425,8 @@ class CentOSDistro(DebianInterfacesDistro):
             template_string = format_template(CENTOS_STATIC_TEMPLATE,
                                               ethernets[os_link_name])
             LOG(template_string)
-            # with open(net_config_file, 'w') as config_file:
-            #     config_file.write(template_string)
+            with open(net_config_file, 'w') as config_file:
+                config_file.write(template_string)
 
 
 def get_os_distribution():

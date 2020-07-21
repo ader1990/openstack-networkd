@@ -218,9 +218,14 @@ Capabilities:
   * Configures Debian interfaces file /etc/network/interfaces for Ubuntu 14.04 and Debian 8 Jessie
   * Configures Debian interfaces file /etc/network/interfaces.d/50-cloud-config.cfg for Ubuntu 16.04, Debian 9 Stretch, Debian 10 Buster
   * Configures netplan config file /etc/netplan/50-cloud-config.yaml for Ubuntu 18.04
+  * Configures syconfig network config files /etc/sysconfig/network-scripts/ifcfg-%s for CentOS 6, 7 and 8
   * Supported Python version: vanilla Python2 and Python3
-  * Supported distros: Ubuntu 14.04, Ubuntu 16.04, Ubuntu 18.04, Debian 8 Jessie, Debian 9 Stretch, Debian 10 Buster
-  * TODO: Add support for CentOS (6, 7, 8)
+  * Supported distros: Ubuntu 14.04, Ubuntu 16.04, Ubuntu 18.04, Debian 8 Jessie, Debian 9 Stretch, Debian 10 Buster, CentOS (6, 7, 8)
+  * TODO: Add support for DNS set on CentOS, if needed
+  * Notes:
+    * On CentOS 8, there is no Python in path, use /usr/libexec/platform-python
+    * On Debians, DNS is not properly set by cloud-init
+    * On Debians, etc/network/interfaces file sets first 3 interfaces to dhcp, which slows booting or network resets
 
 Example:
 
