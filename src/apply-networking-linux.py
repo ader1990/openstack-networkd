@@ -296,10 +296,7 @@ class NetplanDistro(DebianInterfacesDistro):
                     "addresses": [],
                     "search": []
                 },
-                "routes": {
-                    "to": "",
-                    "via": ""
-                },
+                "routes": [],
                 "set-name": os_link_name
             }
 
@@ -307,13 +304,29 @@ class NetplanDistro(DebianInterfacesDistro):
             LOG("Processing network %s" % network["id"])
             os_link_name = links[network["link"]]["os_link_name"]
 
+            dns = []
+            for service in network["services"]:
+                if str(service["type"]) == "dns":
+                    dns += [service["address"]]
+            ethernets[os_link_name]["nameservers"]["addresses"] += dns
+
+            routes = []
+            for route in network["routes"]:
+                network_address = route["network"]
+                gateway = route["gateway"]
+                prefixlen = str(mask_to_net_prefix(str(route["netmask"])))
+                routes += [{
+                    "to": "%s/%s" % (network_address, prefixlen),
+                    "via": gateway
+                }]
+            ethernets[os_link_name]["routes"] += routes
+
         netplan_config = NETPLAN_ROOT_CONFIG
         netplan_config["network"]["ethernets"] = ethernets
 
         import yaml
         netplan_config_str = yaml.dump(netplan_config, line_break="\n",
-                                       indent=4, default_flow_style=False,
-                                       explicit_start=True, explicit_end=True)
+                                       indent=4, default_flow_style=False)
         LOG(netplan_config_str)
 
         LOG("Writing config to %s" % self.config_file)
