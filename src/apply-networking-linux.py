@@ -132,10 +132,7 @@ IPV6_FAILURE_FATAL=no
 IPV6INIT=$init_ipv6
 IPV6ADDR=$address_ipv6
 IPV6_DEFAULTGW=$gateway_ipv6%$name
-DNS1=$dns1_ipv4
-DNS2=$dns2_ipv4
-IPV6_DNS1=$dns1_ipv6
-IPV6_DNS2=$dns2_ipv6
+$dns
 """
 
 
@@ -404,10 +401,12 @@ class CentOSDistro(DebianInterfacesDistro):
             if network["type"] == "ipv6":
                 family = "6"
 
-            dns = []
+            dns_template = ""
+            dns_nr = 1
             for service in network["services"]:
                 if str(service["type"]) == "dns":
-                    dns += [service["address"]]
+                    dns_template += "DNS%d=%s\n" % (dns_nr, service["address"])
+                    dns_nr += 1
 
             gateway = None
             for route in network["routes"]:
@@ -426,19 +425,12 @@ class CentOSDistro(DebianInterfacesDistro):
                 ethernets[os_link_name]["gateway_ipv6"] = gateway
                 ethernets[os_link_name]["netmask_ipv6"] = netmask
                 ethernets[os_link_name]["address_ipv6"] = network["ip_address"]
-                if len(dns) > 0:
-                    ethernets[os_link_name]["dns1_ipv6"] = dns[0]
-                if len(dns) > 1:
-                    ethernets[os_link_name]["dns2_ipv6"] = dns[1]
             else:
                 ethernets[os_link_name]["init_ipv4"] = "yes"
                 ethernets[os_link_name]["gateway"] = gateway
                 ethernets[os_link_name]["netmask"] = netmask
                 ethernets[os_link_name]["address"] = network["ip_address"]
-                if len(dns) > 0:
-                    ethernets[os_link_name]["dns1_ipv4"] = dns[0]
-                if len(dns) > 1:
-                    ethernets[os_link_name]["dns2_ipv4"] = dns[1]
+            ethernets[os_link_name]["dns"] = dns_template
 
         for os_link_name in ethernets.keys():
             net_config_file = self.config_file % os_link_name
