@@ -171,44 +171,69 @@ class DebianInterfacesDistro(object):
             if not os_link_name:
                 raise Exception("Link not found for net %s" % network["id"])
 
+            network_type = str(network["type"])
+            if network_type not in SUPPORTED_NETWORK_TYPES:
+                raise Exception(
+                    "Network type %s not supported for %s" % (network_type,
+                                                              os_link_name))
+
             net_type = "static"
+            if "dhcp" in network_type:
+                net_type = "dhcp"
+
             family = ""
-            if network["type"] == "ipv6":
+            if "ipv6" in network_type:
                 family = "6"
 
-            gateway = None
-            for route in network["routes"]:
-                route_gateway = route["gateway"]
-                prefixlen = str(mask_to_net_prefix(str(route["netmask"])))
-                if prefixlen == "0":
-                    gateway = route_gateway
-                    break
+            mac_address = links[network["link"]]["ethernet_mac_address"]
 
-            if not gateway:
-                raise "No gateways have been found"
+            if net_type == "static":
+                gateway = None
+                for route in network["routes"]:
+                    route_gateway = route["gateway"]
+                    prefixlen = str(mask_to_net_prefix(str(route["netmask"])))
+                    if prefixlen == "0":
+                        gateway = route_gateway
+                        break
 
-            dns = []
-            for service in network["services"]:
-                if str(service["type"]) == "dns":
-                    dns += [service["address"]]
+                if not gateway:
+                    raise Exception("No gateways have been found")
 
-            netmask = network["netmask"]
-            if family == "6":
-                netmask = str(mask_to_net_prefix(str(netmask)))
+                dns = []
+                for service in network["services"]:
+                    if str(service["type"]) == "dns":
+                        dns += [service["address"]]
 
-            template_network_data = {
-                "name": os_link_name,
-                "type": net_type,
-                "family": family,
-                "mac_address": links[network["link"]]["ethernet_mac_address"],
-                "mtu": links[network["link"]]["mtu"],
-                "address": network["ip_address"],
-                "netmask": netmask,
-                "gateway": gateway,
-                "dns": " ".join(dns)
-            }
-            template_string += (
-                format_template(self.static_template, template_network_data))
+                netmask = network["netmask"]
+                if family == "6":
+                    netmask = str(mask_to_net_prefix(str(netmask)))
+
+                template_network_data = {
+                    "name": os_link_name,
+                    "type": net_type,
+                    "family": family,
+                    "mac_address": mac_address,
+                    "mtu": links[network["link"]]["mtu"],
+                    "address": network["ip_address"],
+                    "netmask": netmask,
+                    "gateway": gateway,
+                    "dns": " ".join(dns)
+                }
+                template_string += format_template(self.static_template,
+                                                   template_network_data)
+            elif reset_to_dhcp:
+                auto_data = {
+                    "name": os_link_name,
+                    "type": net_type,
+                    "family": family
+                }
+                template_string += (
+                    format_template(self.default_template, auto_data) + "\n")
+            else:
+                LOG("Skipping network %s" % network["id"])
+                continue
+
+            LOG("Setting network %s to %s" % (network["id"], net_type))
             template_string += "\n"
 
         LOG("Writing config to %s" % self.config_file)
