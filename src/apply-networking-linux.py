@@ -135,6 +135,8 @@ IPV6_DEFAULTGW=$gateway_ipv6%$name
 $dns
 """
 
+SUPPORTED_NETWORK_TYPES = ["ipv4", "ipv6", "ipv4_dhcp", "ipv6_dhcp"]
+
 
 class DebianInterfacesDistro(object):
 
@@ -213,7 +215,7 @@ class DebianInterfacesDistro(object):
         with open(self.config_file, 'w') as config_file:
             config_file.write(template_string)
 
-    def apply_network_config(self, network_data):
+    def apply_network_config(self, network_data, reset_to_dhcp=False):
         links = {}
         for link in network_data["links"]:
             os_link_name = get_os_net_interface_by_mac(
@@ -244,8 +246,16 @@ class DebianInterfacesDistro(object):
             LOG("Apply network " + network["id"] + " for " + os_link_name)
 
             base_cmd = ["ip"]
-            if str(network["type"]) == "ipv6":
+            dhclient_cmd = ["dhclient"]
+            network_type = str(network["type"])
+            if network_type not in SUPPORTED_NETWORK_TYPES:
+                raise Exception(
+                    "Network type %s not supported for %s" % (network_type,
+                                                              os_link_name))
+
+            if "ipv6" in network_type:
                 base_cmd += ["-6"]
+                dhclient_cmd += ["-6"]
 
             flush_addr_cmd = base_cmd + ["addr", "flush", "dev", os_link_name]
             out, err, exit_code = execute_process(flush_addr_cmd, shell=False)
@@ -257,6 +267,17 @@ class DebianInterfacesDistro(object):
             out, err, exit_code = execute_process(flush_route_cmd, shell=False)
             if exit_code:
                 raise Exception("Routes could not be flushed")
+
+            if "dhcp" in network_type:
+                if reset_to_dhcp:
+                    dhclient_cmd += [os_link_name]
+                    out, err, exit_code = execute_process(dhclient_cmd,
+                                                          shell=False)
+                    if exit_code:
+                        LOG("dhclient failed for %s. Err: %s" % (os_link_name,
+                                                                 err))
+
+                continue
 
             ip_address = network["ip_address"]
             ip_netmask = network["netmask"]
@@ -630,7 +651,7 @@ def LOG(msg):
 
 
 @retry_decorator()
-def configure_network(b64json_network_data):
+def configure_network(b64json_network_data, reset_to_dhcp=False):
     network_data = parse_fron_b64_json(b64json_network_data)
     # LOG(network_data)
 
@@ -656,11 +677,13 @@ def configure_network(b64json_network_data):
     else:
         raise Exception("Distro %s not supported" % os_distrib_str)
 
-    DISTRO.set_network_config_file(network_data)
-    DISTRO.apply_network_config(network_data)
+    DISTRO.set_network_config_file(network_data, reset_to_dhcp=reset_to_dhcp)
+    DISTRO.apply_network_config(network_data, reset_to_dhcp=reset_to_dhcp)
 
 data = sys.argv[1]
 
 # data = get_example_metadata()
 
-configure_network(data)
+reset_to_dhcp = False
+
+configure_network(data, reset_to_dhcp=reset_to_dhcp)
