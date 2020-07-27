@@ -1,6 +1,7 @@
 # Copyright 2020 Cloudbase Solutions Srl
 param(
-    $RawNetworkConfig
+    [string]$RawNetworkConfig,
+    [switch]$ConfigureAdapterDhcp=$false
 )
 
 $ErrorActionPreference = "Stop"
@@ -162,7 +163,7 @@ function Set-Links {
                 { $_.MacAddress -eq ($link.ethernet_mac_address -Replace ":","-") }
         }
 
-        # Bring link up
+        # Bring link up to set MTU
         if ($iface.Status -ne "Up") {
             Write-Log "Enabling interface $($iface.Name)"
             $iface | Enable-NetAdapter | Out-Null
@@ -189,7 +190,15 @@ function Set-Links {
 
 
 function Set-Network {
-    param($Network)
+    param(
+        $Network,
+        [switch]$ConfigureAdapterDhcp=$false
+    )
+
+    $allowedTypes = @("ipv4", "ipv6", "ipv4_dhcp", "ipv6_dhcp")
+    if (!($allowedTypes -contains $network.type)) {
+        throw "Network type not recognized: $($network.type) for $($network.link)"
+    }
 
     $addressFamily = "IPv4"
     if ($network.type.IndexOf("ipv6") -gt -1) {
@@ -295,7 +304,7 @@ function Set-Network {
         Set-Nameservers $nameservers $network.link
     }
 
-    if ($network.type.IndexOf("dhcp") -gt -1) {
+    if ($ConfigureAdapterDhcp -and $network.type.IndexOf("dhcp") -gt -1) {
         Write-Log "Enabling DHCP on interface $($network.link)"
         Set-NetIPInterface -InterfaceIndex $iface.ifIndex -Dhcp Enabled `
             -AddressFamily $addressFamily
@@ -303,16 +312,23 @@ function Set-Network {
 }
 
 function Set-Networks {
-    param($Networks)
+    param(
+        $Networks,
+        [switch]$ConfigureAdapterDhcp=$false
+    )
 
     foreach ($network in $Networks) {
-        Set-Network $network
+        Set-Network -Network $network -ConfigureAdapterDhcp:$ConfigureAdapterDhcp
     }
 }
 
 
 function Main {
-    param($RawNetworkConfig)
+    param(
+        [string]$RawNetworkConfig,
+        [switch]$ConfigureAdapterDhcp=$false
+    )
+
 
     $networkConfig = Parse-NetworkConfig $RawNetworkConfig
 
@@ -321,10 +337,10 @@ function Main {
     $nameservers = $networkConfig.services | Where-Object { $_.type -eq "dns" }
 
     Set-Links $links
-    Set-Networks $networks
+    Set-Networks -Networks $networks -ConfigureAdapterDhcp:$ConfigureAdapterDhcp
     Set-Nameservers $nameservers
 }
 
 # $RawNetworkConfig = Get-ExampleNetworkData -DataType "raw"
 
-Main $RawNetworkConfig
+Main -RawNetworkConfig $RawNetworkConfig -ConfigureAdapterDhcp:$ConfigureAdapterDhcp
