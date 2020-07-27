@@ -145,7 +145,7 @@ class DebianInterfacesDistro(object):
         self.default_template = ENI_INTERFACE_DEFAULT_TEMPLATE
         self.static_template = ENI_INTERFACE_STATIC_TEMPLATE
 
-    def set_network_config_file(self, network_data):
+    def set_network_config_file(self, network_data, reset_to_dhcp=False):
         template_string = ENI_INTERFACE_HEADER + "\n"
         lo_data = {
             "name": "lo",
@@ -316,7 +316,7 @@ class NetplanDistro(DebianInterfacesDistro):
         super(NetplanDistro, self).__init__()
         self.config_file = "/etc/netplan/50-cloud-init.yaml"
 
-    def set_network_config_file(self, network_data):
+    def set_network_config_file(self, network_data, reset_to_dhcp=False):
         ethernets = {}
 
         links = {}
@@ -387,7 +387,7 @@ class CentOSDistro(DebianInterfacesDistro):
         super(CentOSDistro, self).__init__()
         self.config_file = "/etc/sysconfig/network-scripts/ifcfg-%s"
 
-    def set_network_config_file(self, network_data):
+    def set_network_config_file(self, network_data, reset_to_dhcp=False):
         ethernets = {}
         links = {}
         for link in network_data["links"]:
