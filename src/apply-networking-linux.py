@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 # Copyright 2020 Cloudbase Solutions Srl
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -215,32 +216,53 @@ class DebianInterfacesDistro(object):
         with open(self.config_file, 'w') as config_file:
             config_file.write(template_string)
 
+    def _get_device_for_link(self, network_data, link):
+        for n_link in network_data["links"]:
+            LOG(">> %r --> %r"  %(n_link["id"], link))
+            if n_link["id"] == link:
+                return get_os_net_interface_by_mac(n_link["ethernet_mac_address"])
+        raise Exception("could not find device for link %s" % link)
+
+    def _set_link_mtu(self, link, mtu):
+        LOG("Setting MTU for link %s to %r" % (link, mtu))
+        ip_cmd = ["ip", "link", "set", "dev", link, "mtu", mtu]
+        _, err, exit_code = execute_process(ip_cmd, shell=False)
+        if exit_code:
+            raise Exception("MTU could not be set: %s" % err)
+
+    def _set_link_online(self, link):
+        ip_cmd = ["ip", "link", "set", "dev", link, "up"]
+        _, err, exit_code = execute_process(ip_cmd, shell=False)
+        if exit_code:
+            raise Exception("MTU could not be set: %s" % err)
+
+    def _flush_nic(self, link):
+        for i in ("4", "6"):
+            flush_addr_cmd = ["ip", "-%s" % i, "addr", "flush", "dev", link]
+            LOG("Executing: %s" % " ".join(flush_addr_cmd))
+            out, err, exit_code = execute_process(flush_addr_cmd, shell=False)
+            if exit_code:
+                raise Exception("IPs could not be flushed")
+
+            flush_route_cmd = ["ip", "-%s" % i, "route", "flush", "dev",
+                                          link, "scope", "global"]
+            LOG("Executing: %s" % " ".join(flush_route_cmd))
+            out, err, exit_code = execute_process(flush_route_cmd, shell=False)
+            if exit_code:
+                raise Exception("Routes could not be flushed")
+
     def apply_network_config(self, network_data, reset_to_dhcp=False):
         links = {}
         for link in network_data["links"]:
-            os_link_name = get_os_net_interface_by_mac(
-                link["ethernet_mac_address"])
-            if not os_link_name:
-                raise Exception(
-                    "Link could not be found " + link["ethernet_mac_address"])
-            link["os_link_name"] = os_link_name
-            links[link["id"]] = link
+            link_dev = self._get_device_for_link(network_data, link["id"])
+            self._set_link_online(link_dev)
+            self._set_link_mtu(link_dev, link["mtu"])
 
-            LOG("Apply config for link " + os_link_name)
-            base_cmd = ["ip", "link", "set", "dev", os_link_name]
-
-            mtu_cmd = base_cmd + ["mtu", link["mtu"]]
-            out, err, exit_code = execute_process(mtu_cmd, shell=False)
-            if exit_code:
-                raise Exception("MTU could not be set")
-
-            up_cmd = base_cmd + ["up"]
-            out, err, exit_code = execute_process(up_cmd, shell=False)
-            if exit_code:
-                raise Exception("Link could not be set to up state")
-
+        flushed_links = set()
+        route_destinations = set()
         for network in network_data["networks"]:
-            os_link_name = links[network["link"]]["os_link_name"]
+            #os_link_name = links[network["link"]]["os_link_name"]
+            os_link_name = self._get_device_for_link(network_data, network["link"])
             if not os_link_name:
                 raise Exception("Link not found for net %s" % network["id"])
             LOG("Apply network " + network["id"] + " for " + os_link_name)
@@ -252,21 +274,14 @@ class DebianInterfacesDistro(object):
                 raise Exception(
                     "Network type %s not supported for %s" % (network_type,
                                                               os_link_name))
+            if os_link_name not in flushed_links:
+                self._flush_nic(os_link_name)
+                flushed_links.add(os_link_name)
 
-            if "ipv6" in network_type:
+            LOG("Network type is %s" % network_type)
+            if network_type == "ipv6":
                 base_cmd += ["-6"]
                 dhclient_cmd += ["-6"]
-
-            flush_addr_cmd = base_cmd + ["addr", "flush", "dev", os_link_name]
-            out, err, exit_code = execute_process(flush_addr_cmd, shell=False)
-            if exit_code:
-                raise Exception("IPs could not be flushed")
-
-            flush_route_cmd = base_cmd + ["route", "flush", "dev",
-                                          os_link_name]
-            out, err, exit_code = execute_process(flush_route_cmd, shell=False)
-            if exit_code:
-                raise Exception("Routes could not be flushed")
 
             if "dhcp" in network_type:
                 if reset_to_dhcp:
@@ -285,6 +300,7 @@ class DebianInterfacesDistro(object):
             addr_add_cmd = base_cmd + ["addr", "add",
                                        ip_address + "/" + prefixlen,
                                        "dev", os_link_name]
+            LOG("Executing: %s" % " ".join(addr_add_cmd))
             out, err, exit_code = execute_process(addr_add_cmd, shell=False)
             if exit_code:
                 raise Exception("IP could not be set. Err: %s" % err)
@@ -293,14 +309,20 @@ class DebianInterfacesDistro(object):
                 network_address = route["network"]
                 gateway = route["gateway"]
                 prefixlen = str(mask_to_net_prefix(str(route["netmask"])))
+                destination = network_address + "/" + prefixlen
+                if destination in route_destinations:
+                    continue
+
                 route_add_cmd = base_cmd + ["route", "add",
-                                            network_address + "/" + prefixlen,
+                                            destination,
                                             "via", gateway, "dev",
                                             os_link_name]
+                LOG("Executing: %s" % " ".join(route_add_cmd))
                 out, err, exit_code = execute_process(route_add_cmd,
                                                       shell=False)
                 if exit_code:
                     raise Exception("Route could not be set. Err: %s" % err)
+                route_destinations.add(destination)
 
 
 class DebianInterfacesd50Distro(DebianInterfacesDistro):
@@ -341,7 +363,7 @@ class NetplanDistro(DebianInterfacesDistro):
                 "routes": [],
                 "set-name": os_link_name
             }
-
+        existing_destinations = set()
         for network in network_data["networks"]:
             LOG("Processing network %s" % network["id"])
             os_link_name = links[network["link"]]["os_link_name"]
@@ -353,18 +375,25 @@ class NetplanDistro(DebianInterfacesDistro):
             ]
 
             dns = []
+            link_ns = ethernets[os_link_name]["nameservers"]["addresses"]
             for service in network["services"]:
                 if str(service["type"]) == "dns":
+                    if service["address"] in link_ns:
+                        continue
                     dns += [service["address"]]
-            ethernets[os_link_name]["nameservers"]["addresses"] += dns
+            link_ns += dns
 
             routes = []
             for route in network["routes"]:
                 network_address = route["network"]
                 gateway = route["gateway"]
                 prefixlen = str(mask_to_net_prefix(str(route["netmask"])))
+                destination = "%s/%s" % (network_address, prefixlen)
+                if destination in existing_destinations:
+                    continue
+                existing_destinations.add(destination)
                 routes += [{
-                    "to": "%s/%s" % (network_address, prefixlen),
+                    "to": destination,
                     "via": gateway
                 }]
             ethernets[os_link_name]["routes"] += routes
@@ -653,7 +682,7 @@ def LOG(msg):
 @retry_decorator()
 def configure_network(b64json_network_data, reset_to_dhcp=False):
     network_data = parse_fron_b64_json(b64json_network_data)
-    # LOG(network_data)
+    LOG(network_data)
 
     if not network_data:
         LOG("Network data is empty")
