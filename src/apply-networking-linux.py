@@ -469,7 +469,7 @@ class CentOSDistro(DebianInterfacesDistro):
                 "mtu": link["mtu"],
                 "ipv4": [],
                 "ipv6": [],
-                "gateway": "",
+                "gateway_ipv4": "",
                 "gateway_ipv6": "",
                 "ipv4_str": "",
                 "ipv6_str": "",
@@ -531,7 +531,7 @@ class CentOSDistro(DebianInterfacesDistro):
                 address["index"] = "%s" % len_addr
                 ethernets[os_link_name]["init_ipv4"] = "yes"
                 ethernets[os_link_name]["ipv4"] += [address]
-                ethernets[os_link_name]["gateway"] = gateway
+                ethernets[os_link_name]["gateway_ipv4"] = gateway
 
             ethernets[os_link_name]["dns"] += dns_template
 
