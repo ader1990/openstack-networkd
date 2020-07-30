@@ -511,13 +511,18 @@ class CentOSDistro(DebianInterfacesDistro):
             address = {
                 "gateway": gateway,
                 "netmask": netmask,
-                "address": network["ip_address"]
+                "address": network["ip_address"],
+                "index": "0"
             }
 
             if family == "6":
+                len_addr = len(ethernets[os_link_name]["ipv6"])
+                address["index"] = "%s" % len_addr
                 ethernets[os_link_name]["init_ipv6"] = "yes"
                 ethernets[os_link_name]["ipv6"] += [address]
             else:
+                len_addr = len(ethernets[os_link_name]["ipv6"])
+                address["index"] = "%s" % len_addr
                 ethernets[os_link_name]["init_ipv4"] = "yes"
                 ethernets[os_link_name]["ipv4"] += [address]
 
@@ -537,6 +542,11 @@ class CentOSDistro(DebianInterfacesDistro):
                 ethernets[os_link_name]["ipv6_str"] += (
                     "%s\n" % format_template(template,
                                              ipv6_addr))
+
+            ethernets[os_link_name]["ipv6_str"] = (
+                ethernets[os_link_name]["ipv6_str"].strip())
+            ethernets[os_link_name]["ipv4_str"] = (
+                ethernets[os_link_name]["ipv4_str"].strip())
 
             LOG("Writing config to %s" % net_config_file)
             template_string = format_template(CENTOS_STATIC_TEMPLATE,
