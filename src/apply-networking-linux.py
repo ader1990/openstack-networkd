@@ -141,7 +141,7 @@ IPADDR$index=$address
 """
 
 CENTOS_STATIC_TEMPLATE_IP_V6 = """
-IPV6_DEFAULTGW$index=$gateway_ipv6%$name
+IPV6_DEFAULTGW$index=$gateway%$name
 IPV6ADDR$index=$address
 """
 
@@ -507,10 +507,13 @@ class CentOSDistro(DebianInterfacesDistro):
                 raise "No gateways have been found"
 
             netmask = network["netmask"]
+            prefix = str(mask_to_net_prefix(str(netmask)))
 
             address = {
                 "gateway": gateway,
+                "name": os_link_name,
                 "netmask": netmask,
+                "prefix": prefix,
                 "address": network["ip_address"],
                 "index": "0"
             }
