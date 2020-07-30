@@ -35,7 +35,7 @@ ENI_INTERFACE_HEADER = """
 """
 ENI_INTERFACE_STATIC_TEMPLATE = """
 auto $name
-iface $name inet$family $type
+iface $name inet$family$index $type
     hwaddress ether $mac_address
     address $address
     mtu $mtu
@@ -44,7 +44,7 @@ iface $name inet$family $type
     dns-nameservers $dns
 """
 ENI_INTERFACE_DEFAULT_TEMPLATE = """
-auto $name
+auto $name$index
 iface $name inet$family $type
 """
 SYS_CLASS_NET = "/sys/class/net/"
@@ -167,6 +167,7 @@ class DebianInterfacesDistro(object):
             link["os_link_name"] = os_link_name
             links[link["id"]] = link
 
+        interface_indexes = {}
         for network in network_data["networks"]:
             LOG("Processing network %s" % network["id"])
             os_link_name = links[network["link"]]["os_link_name"]
@@ -190,6 +191,12 @@ class DebianInterfacesDistro(object):
             mac_address = links[network["link"]]["ethernet_mac_address"]
 
             if net_type == "static":
+                interface_index_str = ""
+                interface_index_id = "%s%s" % (os_link_name, family)
+                interface_index = interface_indexes.get(interface_index_id, 0)
+                if interface_index != 0:
+                    interface_index_str = ":%s" % interface_index - 1
+                interface_indexes[interface_index_id] = interface_index + 1
                 gateway = None
                 for route in network["routes"]:
                     route_gateway = route["gateway"]
@@ -211,6 +218,7 @@ class DebianInterfacesDistro(object):
                     netmask = str(mask_to_net_prefix(str(netmask)))
 
                 template_network_data = {
+                    "index": interface_index_str,
                     "name": os_link_name,
                     "type": net_type,
                     "family": family,
