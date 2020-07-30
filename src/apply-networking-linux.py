@@ -121,20 +121,28 @@ BOOTPROTO=none
 DEFROUTE=yes
 DEVICE=$name
 IPV4INIT=$init_ipv4
-GATEWAY=$gateway
 HWADDR=$mac_address
-IPADDR=$address
 MTU=$mtu
-NETMASK=$netmask
 ONBOOT=yes
 TYPE=Ethernet
 USERCTL=no
 IPV4_FAILURE_FATAL=no
 IPV6_FAILURE_FATAL=no
 IPV6INIT=$init_ipv6
-IPV6ADDR=$address_ipv6
-IPV6_DEFAULTGW=$gateway_ipv6%$name
+$ipv4_str
+$ipv6_str
 $dns
+"""
+
+CENTOS_STATIC_TEMPLATE_IP_V4 = """
+GATEWAY$index=$gateway
+PREFIX$index=$prefix
+IPADDR$index=$address
+"""
+
+CENTOS_STATIC_TEMPLATE_IP_V6 = """
+IPV6_DEFAULTGW$index=$gateway_ipv6%$name
+IPV6ADDR$index=$address
 """
 
 SUPPORTED_NETWORK_TYPES = ["ipv4", "ipv6", "ipv4_dhcp", "ipv6_dhcp"]
@@ -459,16 +467,14 @@ class CentOSDistro(DebianInterfacesDistro):
                 "name": os_link_name,
                 "mac_address": link["ethernet_mac_address"],
                 "mtu": link["mtu"],
-                "gateway": "",
-                "netmask": "",
-                "address": "",
+                "ipv4": [],
+                "ipv6": [],
+                "ipv4_str": "",
+                "ipv6_str": "",
                 "init_ipv4": "no",
                 "init_ipv6": "no",
-                "address_ipv6": "",
-                "gateway_ipv6": "",
-                "netmask_ipv6": "",
                 "dns": "",
-                "dns_nr": 1
+                "dns_nr": 1,
             }
 
         for network in network_data["networks"]:
@@ -501,20 +507,37 @@ class CentOSDistro(DebianInterfacesDistro):
                 raise "No gateways have been found"
 
             netmask = network["netmask"]
+
+            address = {
+                "gateway": gateway,
+                "netmask": netmask,
+                "address": network["ip_address"]
+            }
+
             if family == "6":
                 ethernets[os_link_name]["init_ipv6"] = "yes"
-                ethernets[os_link_name]["gateway_ipv6"] = gateway
-                ethernets[os_link_name]["netmask_ipv6"] = netmask
-                ethernets[os_link_name]["address_ipv6"] = network["ip_address"]
+                ethernets[os_link_name]["ipv6"] += [address]
             else:
                 ethernets[os_link_name]["init_ipv4"] = "yes"
-                ethernets[os_link_name]["gateway"] = gateway
-                ethernets[os_link_name]["netmask"] = netmask
-                ethernets[os_link_name]["address"] = network["ip_address"]
+                ethernets[os_link_name]["ipv4"] += [address]
+
             ethernets[os_link_name]["dns"] += dns_template
 
         for os_link_name in ethernets.keys():
             net_config_file = self.config_file % os_link_name
+
+            for ipv4_addr in ethernets[os_link_name]["ipv4"]:
+                template = CENTOS_STATIC_TEMPLATE_IP_V4
+                ethernets[os_link_name]["ipv4_str"] += (
+                    "%s\n" % format_template(template,
+                                             ipv4_addr))
+
+            for ipv6_addr in ethernets[os_link_name]["ipv6"]:
+                template = CENTOS_STATIC_TEMPLATE_IP_V6
+                ethernets[os_link_name]["ipv6_str"] += (
+                    "%s\n" % format_template(template,
+                                             ipv6_addr))
+
             LOG("Writing config to %s" % net_config_file)
             template_string = format_template(CENTOS_STATIC_TEMPLATE,
                                               ethernets[os_link_name])
