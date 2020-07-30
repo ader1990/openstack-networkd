@@ -281,8 +281,8 @@ class DebianInterfacesDistro(object):
                 raise Exception("Link not found for net %s" % link["id"])
             self._set_link_online(os_link_name)
             self._set_link_mtu(os_link_name, link["mtu"])
+            self._flush_nic(os_link_name)
 
-        flushed_links = set()
         route_destinations = set()
         for network in network_data["networks"]:
             os_link_name = self._get_device_for_link(network_data,
@@ -298,9 +298,6 @@ class DebianInterfacesDistro(object):
                 raise Exception(
                     "Network type %s not supported for %s" % (network_type,
                                                               os_link_name))
-            if os_link_name not in flushed_links:
-                self._flush_nic(os_link_name)
-                flushed_links.add(os_link_name)
 
             LOG("Network type is %s" % network_type)
             if network_type == "ipv6":
