@@ -697,7 +697,8 @@ def parse_fron_b64_json(b64json_data):
 
 
 def LOG(msg):
-    syslog.syslog(syslog.LOG_INFO, "%s" % msg)
+    msg = "%s" % msg
+    syslog.syslog(syslog.LOG_INFO, msg)
     print(msg)
 
 
