@@ -129,19 +129,19 @@ USERCTL=no
 IPV4_FAILURE_FATAL=no
 IPV6_FAILURE_FATAL=no
 IPV6INIT=$init_ipv6
+GATEWAY=$gateway_ipv4
+IPV6_DEFAULTGW=$gateway_ipv6%$name
 $ipv4_str
 $ipv6_str
 $dns
 """
 
 CENTOS_STATIC_TEMPLATE_IP_V4 = """
-GATEWAY$index=$gateway
 PREFIX$index=$prefix
 IPADDR$index=$address
 """
 
 CENTOS_STATIC_TEMPLATE_IP_V6 = """
-IPV6_DEFAULTGW$index=$gateway%$name
 IPV6ADDR$index=$address
 """
 
@@ -469,6 +469,8 @@ class CentOSDistro(DebianInterfacesDistro):
                 "mtu": link["mtu"],
                 "ipv4": [],
                 "ipv6": [],
+                "gateway": "",
+                "gateway_ipv6": "",
                 "ipv4_str": "",
                 "ipv6_str": "",
                 "init_ipv4": "no",
@@ -523,11 +525,13 @@ class CentOSDistro(DebianInterfacesDistro):
                 address["index"] = "%s" % len_addr
                 ethernets[os_link_name]["init_ipv6"] = "yes"
                 ethernets[os_link_name]["ipv6"] += [address]
+                ethernets[os_link_name]["gateway_ipv6"] = gateway
             else:
                 len_addr = len(ethernets[os_link_name]["ipv6"])
                 address["index"] = "%s" % len_addr
                 ethernets[os_link_name]["init_ipv4"] = "yes"
                 ethernets[os_link_name]["ipv4"] += [address]
+                ethernets[os_link_name]["gateway"] = gateway
 
             ethernets[os_link_name]["dns"] += dns_template
 
