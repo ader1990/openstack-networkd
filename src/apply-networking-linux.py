@@ -243,10 +243,10 @@ class DebianInterfacesDistro(object):
 
     def _get_device_for_link(self, network_data, link):
         for n_link in network_data["links"]:
-            LOG(">> %r --> %r"  %(n_link["id"], link))
             if n_link["id"] == link:
-                return get_os_net_interface_by_mac(n_link["ethernet_mac_address"])
-        raise Exception("could not find device for link %s" % link)
+                return get_os_net_interface_by_mac(
+                    n_link["ethernet_mac_address"])
+        raise Exception("Could not find device for link %s" % link)
 
     def _set_link_mtu(self, link, mtu):
         LOG("Setting MTU for link %s to %r" % (link, mtu))
@@ -264,30 +264,29 @@ class DebianInterfacesDistro(object):
     def _flush_nic(self, link):
         for i in ("4", "6"):
             flush_addr_cmd = ["ip", "-%s" % i, "addr", "flush", "dev", link]
-            LOG("Executing: %s" % " ".join(flush_addr_cmd))
             out, err, exit_code = execute_process(flush_addr_cmd, shell=False)
             if exit_code:
                 raise Exception("IPs could not be flushed")
 
             flush_route_cmd = ["ip", "-%s" % i, "route", "flush", "dev",
-                                          link, "scope", "global"]
-            LOG("Executing: %s" % " ".join(flush_route_cmd))
+                               link, "scope", "global"]
             out, err, exit_code = execute_process(flush_route_cmd, shell=False)
             if exit_code:
                 raise Exception("Routes could not be flushed")
 
     def apply_network_config(self, network_data, reset_to_dhcp=False):
-        links = {}
         for link in network_data["links"]:
-            link_dev = self._get_device_for_link(network_data, link["id"])
-            self._set_link_online(link_dev)
-            self._set_link_mtu(link_dev, link["mtu"])
+            os_link_name = self._get_device_for_link(network_data, link["id"])
+            if not os_link_name:
+                raise Exception("Link not found for net %s" % link["id"])
+            self._set_link_online(os_link_name)
+            self._set_link_mtu(os_link_name, link["mtu"])
 
         flushed_links = set()
         route_destinations = set()
         for network in network_data["networks"]:
-            #os_link_name = links[network["link"]]["os_link_name"]
-            os_link_name = self._get_device_for_link(network_data, network["link"])
+            os_link_name = self._get_device_for_link(network_data,
+                                                     network["link"])
             if not os_link_name:
                 raise Exception("Link not found for net %s" % network["id"])
             LOG("Apply network " + network["id"] + " for " + os_link_name)
@@ -316,7 +315,7 @@ class DebianInterfacesDistro(object):
                     if exit_code:
                         LOG("dhclient failed for %s. Err: %s" % (os_link_name,
                                                                  err))
-
+                # That's all folks!
                 continue
 
             ip_address = network["ip_address"]
@@ -325,7 +324,6 @@ class DebianInterfacesDistro(object):
             addr_add_cmd = base_cmd + ["addr", "add",
                                        ip_address + "/" + prefixlen,
                                        "dev", os_link_name]
-            LOG("Executing: %s" % " ".join(addr_add_cmd))
             out, err, exit_code = execute_process(addr_add_cmd, shell=False)
             if exit_code:
                 raise Exception("IP could not be set. Err: %s" % err)
@@ -342,7 +340,6 @@ class DebianInterfacesDistro(object):
                                             destination,
                                             "via", gateway, "dev",
                                             os_link_name]
-                LOG("Executing: %s" % " ".join(route_add_cmd))
                 out, err, exit_code = execute_process(route_add_cmd,
                                                       shell=False)
                 if exit_code:
@@ -660,6 +657,7 @@ def get_example_metadata():
 
 def execute_process(args, shell=True, decode_output=False):
     args = [str(arg) for arg in args]
+    LOG("Executing: %s" % " ".join(args))
     p = subprocess.Popen(args,
                          stdout=subprocess.PIPE,
                          stderr=subprocess.PIPE,
