@@ -21,6 +21,7 @@ import platform
 import string
 import subprocess
 import sys
+import syslog
 import time
 
 NET_RENDERERS = ["eni", "sysconfig", "netplan"]
@@ -696,6 +697,7 @@ def parse_fron_b64_json(b64json_data):
 
 
 def LOG(msg):
+    syslog.syslog(msg)
     print(msg)
 
 
