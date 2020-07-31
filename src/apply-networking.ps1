@@ -311,14 +311,81 @@ function Set-Network {
     }
 }
 
-function Set-Networks {
+
+function Set-NetworkConfig {
     param(
-        $Networks,
-        [switch]$ConfigureAdapterDhcp=$false
+        $Link,
+        $NetworkConfig
     )
 
-    foreach ($network in $Networks) {
-        Set-Network -Network $network -ConfigureAdapterDhcp:$ConfigureAdapterDhcp
+    Write-Log "Setting networking for link $($link.id) with MAC $($link.ethernet_mac_address)"
+
+    # Set the Link state
+    $iface = Get-NetAdapter | Where-Object `
+        { $_.MacAddress -eq ($link.ethernet_mac_address -Replace ":","-") }
+    if (!$iface) {
+        throw "Link with MAC address $($link.ethernet_mac_address) does not exist"
+    }
+
+    # Rename Link
+    if ($link.id -and $iface.Name -ne $link.id) {
+        Write-Log "Renaming link $($iface.Name) to $($link.id)"
+        Rename-NetAdapter -InputObject $iface -NewName $link.id -Confirm:$false | Out-Null
+        $iface = Get-NetAdapter | Where-Object `
+            { $_.MacAddress -eq ($link.ethernet_mac_address -Replace ":","-") }
+    }
+
+    # Bring link up to set MTU
+    if ($iface.Status -ne "Up") {
+        Write-Log "Enabling interface $($iface.Name)"
+        $iface | Enable-NetAdapter | Out-Null
+    }
+
+    # Set link MTU
+    if ($link.mtu) {
+        Execute-Retry {
+            $iface = Get-NetAdapter | Where-Object `
+                { $_.MacAddress -eq ($link.ethernet_mac_address -Replace ":","-") }
+            Write-Log "Setting MTU $($link.mtu) for link $($iface.name)"
+            $netshOut = $(netsh.exe interface ipv4 set subinterface "$($iface.name)" mtu="$($link.mtu)" store=persistent 2>&1)
+            if ($LASTEXITCODE) {
+                throw "IPv4 MTU could not be set for link $($iface.name). Error: ${netshOut}"
+            }
+            $netshOut = $(netsh.exe interface ipv6 set subinterface "$($iface.name)" mtu="$($link.mtu)" store=persistent 2>&1)
+            if ($LASTEXITCODE) {
+                Write-Log "IPv6 MTU could not be set for link $($iface.name). Error: ${netshOut}"
+            }
+        }
+    }
+
+    $addressFamilyIpv4 = "IPv4"
+    $addressFamilyIpv6 = "IPv6"
+
+    $networksIPv4 = $NetworkConfig.networks | Where-Object { $_.Link -eq $link.id -and $_.type -eq "ipv4" }
+    if ($networksIPv4) {
+        Write-Log "Setting IPv4 networks for link $($link.id)"
+    } else {
+        Set-NetIPInterface -InterfaceIndex $iface.ifIndex -Dhcp Enabled `
+            -AddressFamily $addressFamilyIpv4
+    }
+
+    $networksIPv6 = $NetworkConfig.networks | Where-Object { $_.Link -eq $link.id -and $_.type -eq "ipv6" }
+    if ($networksIPv6) {
+        Write-Log "Setting IPv6 networks for link $($link.id)"
+    } else {
+        Set-NetIPInterface -InterfaceIndex $iface.ifIndex -Dhcp Enabled `
+            -AddressFamily $addressFamilyIpv6
+    }
+}
+
+
+function Set-Links {
+    param(
+        $NetworkConfig
+    )
+
+    foreach ($link in $NetworkConfig.links) {
+        Set-NetworkConfig -Link $link -NetworkConfig $NetworkConfig
     }
 }
 
@@ -331,13 +398,9 @@ function Main {
 
 
     $networkConfig = Parse-NetworkConfig $RawNetworkConfig
-
-    $links = $networkConfig.links
-    $networks = $networkConfig.networks
     $nameservers = $networkConfig.services | Where-Object { $_.type -eq "dns" }
 
-    Set-Links $links
-    Set-Networks -Networks $networks -ConfigureAdapterDhcp:$ConfigureAdapterDhcp
+    Set-Links $networkConfig
     Set-Nameservers $nameservers
 }
 
