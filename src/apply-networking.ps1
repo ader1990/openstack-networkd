@@ -367,21 +367,27 @@ function Set-NetworkConfig {
         Write-Log "Setting IPv4 networks for link $($link.id)"
         $addressFamily = $addressFamilyIpv4
 
-        Write-Log "Cleaning up IPv4 addresses on $($network.link)."
-        Remove-NetIPAddress -InterfaceIndex $iface.ifIndex -Confirm:$false `
-            -AddressFamily $addressFamily -ErrorAction SilentlyContinue
-
         $nameservers = $networksIPv4.services | Where-Object { $_.type -eq "dns" }
         Set-Nameservers $nameservers $link.id
 
         $networksParsedIPv4 = @()
+        $routesParsedIPv4 = @()
         foreach ($netIpv4 in $networksIPv4) {
-            Write-Log "Found IPv4 $($netIpv4) for link $($link.id)"
             $networksParsedIPv4 += @{
                 "address" = $netIpv4.ip_address;
                 "prefix" = (ConvertTo-MaskLength $netIpv4.netmask);
             }
+            foreach ($route in $netIpv4.routes) {
+                $routesParsedIPv4 += @{
+                    "destination" = $route.network + "/" + (ConvertTo-MaskLength $route.netmask);
+                    "gateway" = $route.gateway;
+                }
+            }
         }
+
+        Write-Log "Cleaning up IPv4 addresses on $($link.id)."
+        Remove-NetIPAddress -InterfaceIndex $iface.ifIndex -Confirm:$false `
+            -AddressFamily $addressFamily -ErrorAction SilentlyContinue
 
         foreach ($networkParsedIPv4 in $networksParsedIPv4) {
             Write-Log "Set new IP $($networkParsedIPv4["address"] + '/' + $networkParsedIPv4["prefix"]) on $($link.id)"
@@ -390,6 +396,18 @@ function Set-NetworkConfig {
                  -InterfaceIndex $iface.ifIndex `
                  -AddressFamily $addressFamily `
                  -Confirm:$false | Out-Null
+        }
+
+        Write-Log "Cleaning up IPv4 routes for $($link.id)."
+        Remove-NetRoute -Confirm:$false -ErrorAction SilentlyContinue `
+            -AddressFamily $addressFamily -InterfaceIndex $iface.ifIndex | Out-Null
+
+        foreach ($routeParsedIPv4 in $routesParsedIPv4) {
+            Write-Log "Adding IPv4 route $($routeParsedIPv4["destination"]) via $($routeParsedIPv4["gateway"]) for link $($link.id)"
+            New-NetRoute -Confirm:$false -ErrorAction SilentlyContinue `
+                -DestinationPrefix $routeParsedIPv4["destination"] `
+                -NextHop $routeParsedIPv4["gateway"] `
+                -AddressFamily $addressFamily -InterfaceIndex $iface.ifIndex | Out-Null
         }
     } else {
         Set-NetIPInterface -InterfaceIndex $iface.ifIndex -Dhcp Enabled `
@@ -401,21 +419,27 @@ function Set-NetworkConfig {
         Write-Log "Setting IPv6 networks for link $($link.id)"
         $addressFamily = $addressFamilyIpv6
 
-        Write-Log "Cleaning up IPv6 addresses on $($network.link)."
-        Remove-NetIPAddress -InterfaceIndex $iface.ifIndex -Confirm:$false `
-            -AddressFamily $addressFamily -ErrorAction SilentlyContinue
-
         $nameservers = $networksIPv6.services | Where-Object { $_.type -eq "dns" }
         Set-Nameservers $nameservers $link.id
 
         $networksParsedIPv6 = @()
+        $routesParsedIPv6 = @()
         foreach ($netIpv6 in $networksIPv6) {
-            Write-Log "Found IPv6 $($netIpv6) for link $($link.id)"
             $networksParsedIPv6 += @{
                 "address" = $netIpv6.ip_address;
                 "prefix" = (ConvertTo-MaskLength $netIpv6.netmask);
             }
+            foreach ($route in $netIpv6.routes) {
+                $routesParsedIPv6 += @{
+                    "destination" = $route.network + "/" + (ConvertTo-MaskLength $route.netmask);
+                    "gateway" = $route.gateway;
+                }
+            }
         }
+
+        Write-Log "Cleaning up IPv6 addresses on $($link.id)."
+        Remove-NetIPAddress -InterfaceIndex $iface.ifIndex -Confirm:$false `
+            -AddressFamily $addressFamily -ErrorAction SilentlyContinue
 
         foreach ($networkParsedIPv6 in $networksParsedIPv6) {
             Write-Log "Set new IP $($networkParsedIPv6["address"] + '/' + $networkParsedIPv6["prefix"]) on $($link.id)"
@@ -424,6 +448,18 @@ function Set-NetworkConfig {
                  -InterfaceIndex $iface.ifIndex `
                  -AddressFamily $addressFamily `
                  -Confirm:$false | Out-Null
+        }
+
+        Write-Log "Cleaning up IPv6 routes for $($link.id)."
+        Remove-NetRoute -Confirm:$false -ErrorAction SilentlyContinue `
+            -AddressFamily $addressFamily -InterfaceIndex $iface.ifIndex | Out-Null
+
+        foreach ($routeParsedIPv6 in $routesParsedIPv6) {
+            Write-Log "Adding IPv6 route $($routeParsedIPv6["destination"]) via $($routeParsedIPv6["gateway"]) for link $($link.id)"
+            New-NetRoute -Confirm:$false -ErrorAction SilentlyContinue `
+                -DestinationPrefix $routeParsedIPv6["destination"] `
+                -NextHop $routeParsedIPv6["gateway"] `
+                -AddressFamily $addressFamily -InterfaceIndex $iface.ifIndex | Out-Null
         }
     } else {
         Set-NetIPInterface -InterfaceIndex $iface.ifIndex -Dhcp Enabled `
