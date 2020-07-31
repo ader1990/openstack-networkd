@@ -1,0 +1,9 @@
+#!/bin/sh
+
+SCRIPTS_PATH="/scripts"
+
+PYTHON_PATH=$(which python || which python2 || which python3)
+
+"${PYTHON_PATH}" "${SCRIPTS_PATH}/apply-networking-linux.py" $1
+
+exit $?
