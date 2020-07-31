@@ -90,16 +90,16 @@ function Set-Nameservers {
     )
 
     PROCESS {
-        $searchSuffix = [System.Collections.Generic.List[object]](New-Object "System.Collections.Generic.List[object]")
-        $addresses = [System.Collections.Generic.List[object]](New-Object "System.Collections.Generic.List[object]")
+        $searchSuffix = @()
+        $addresses = @()
         foreach ($nameserver in $nameservers) {
             if ($nameserver.search -and $nameserver.search.Count -gt 0){
                 foreach ($s in $nameserver.search) {
-                    $searchSuffix.Add($s)
+                    $searchSuffix += $s
                 }
             }
             if ($nameserver.address) {
-                $addresses.Add($nameserver.address)
+                $addresses += $nameserver.address
             }
         }
 
@@ -109,6 +109,7 @@ function Set-Nameservers {
         }
 
         if ($addresses) {
+            $addresses = $addresses | Get-Unique
             Write-Log "Setting DNSses ${addresses} for interfaces aliases ${InterfaceAlias}"
             Set-DnsClientServerAddress -InterfaceAlias $InterfaceAlias `
                 -ServerAddresses $addresses -Confirm:$false | Out-Null
@@ -364,6 +365,20 @@ function Set-NetworkConfig {
     $networksIPv4 = $NetworkConfig.networks | Where-Object { $_.Link -eq $link.id -and $_.type -eq "ipv4" }
     if ($networksIPv4) {
         Write-Log "Setting IPv4 networks for link $($link.id)"
+        $addressFamily = $addressFamilyIpv4
+
+        $nameservers = $networksIPv4.services | Where-Object { $_.type -eq "dns" }
+        Set-Nameservers $nameservers $link.id
+
+        $networksParsedIPv4 = @()
+        foreach ($networkParsedIPv4 in $networksParsedIPv4) {
+            Write-Log "Set new IP on Link $($network.link)."
+            New-NetIPAddress -IPAddress $networkParsedIPv4["address"] `
+                 -PrefixLength $networkParsedIPv4["prefix"] `
+                 -InterfaceIndex $iface.ifIndex `
+                 -AddressFamily $addressFamily `
+                 -Confirm:$false -ErrorAction "SilentlyContinue" | Out-Null
+        }
     } else {
         Set-NetIPInterface -InterfaceIndex $iface.ifIndex -Dhcp Enabled `
             -AddressFamily $addressFamilyIpv4
@@ -372,6 +387,32 @@ function Set-NetworkConfig {
     $networksIPv6 = $NetworkConfig.networks | Where-Object { $_.Link -eq $link.id -and $_.type -eq "ipv6" }
     if ($networksIPv6) {
         Write-Log "Setting IPv6 networks for link $($link.id)"
+        $addressFamily = $addressFamilyIpv6
+
+        Write-Log "Cleaning up IPv6 addresses on $($network.link)."
+        Remove-NetIPAddress -InterfaceIndex $iface.ifIndex -Confirm:$false `
+            -AddressFamily $addressFamily -ErrorAction SilentlyContinue
+
+        $nameservers = $networksIPv6.services | Where-Object { $_.type -eq "dns" }
+        Set-Nameservers $nameservers $link.id
+
+        $networksParsedIPv6 = @()
+        foreach ($netIpv6 in $networksIPv6) {
+            Write-Log "Found IPv6 $($netIpv6) for link $($link.id)"
+            $networksParsedIPv6 += @{
+                "address" = $netIpv6.ip_address;
+                "prefix" = (ConvertTo-MaskLength $netIpv6.netmask);
+            }
+        }
+
+        foreach ($networkParsedIPv6 in $networksParsedIPv6) {
+            Write-Log "Set new IP $($networkParsedIPv6["address"] + '/' + $networkParsedIPv6["prefix"]) on $($link.id)"
+            New-NetIPAddress -IPAddress $networkParsedIPv6["address"] `
+                 -PrefixLength $networkParsedIPv6["prefix"] `
+                 -InterfaceIndex $iface.ifIndex `
+                 -AddressFamily $addressFamily `
+                 -Confirm:$false
+        }
     } else {
         Set-NetIPInterface -InterfaceIndex $iface.ifIndex -Dhcp Enabled `
             -AddressFamily $addressFamilyIpv6
