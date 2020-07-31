@@ -244,3 +244,65 @@ python src/apply-networking-linux.py $networkConfigB64
 #Apply network network1 for eth0
 
 ```
+
+# How to configure Qemu Guest Agents
+
+# For Windows Server (2012 R2, 2016, 2019)
+
+```powershell
+[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+$wc = New-Object System.Net.WebClient
+
+# Download Fedora VirtIO ISO
+$isoPath = "C:\fedora-virtio.iso"
+$wc.downloadFile("https://fedorapeople.org/groups/virt/virtio-win/direct-downloads/archive-virtio/virtio-win-0.1.187-1/virtio-win-0.1.187.iso", $isoPath)
+
+# mount iso and install agent
+$mountResult = Mount-DiskImage "isoPath" -PassThru
+Get-PsDrive | Out-Null
+$mountPoint = ($mountResult | Get-Volume).DriveLetter
+
+msiexe -i "${mountPoint}:\guest-agent\qemu-ga-x86_64.msi" /qn 
+
+Get-Service "qemu*" # there should be two services, one running
+
+mkdir C:\scripts
+$wc.downloadFile("https://raw.githubusercontent.com/ader1990/openstack-networkd/master/src/apply-networking.ps1", "C:\\scripts\\apply-network-config.ps1")
+````
+
+
+
+# For Ubuntu 18.04
+
+```bash
+#!/bin/bash
+apt update && apt install qemu-guest-agent -y
+```
+# For CentOS 7 and CentOS 8
+
+Firstly, disable SELINUX and reboot.
+
+```bash
+#!/bin/bash
+yum install qemu-guest-agent -y
+systemctl start qemu-guest-agent
+systemctl enable qemu-guest-agent
+
+# Update in /etc/sysconfig/qemu-ga or remove the line completely
+# BLACKLIST_RPC=
+sed -i '/^BLACKLIST_RPC=/d' /etc/sysconfig/qemu-ga
+
+systemctl restart qemu-guest-agent
+```
+
+# Script to get files for all the Linux versions
+
+```
+#!/bin/bash
+
+mkdir /scripts
+curl https://raw.githubusercontent.com/ader1990/openstack-networkd/master/src/apply-networking-linux.py -o /scripts/apply-networking-linux.py
+curl https://raw.githubusercontent.com/ader1990/openstack-networkd/master/src/apply-networking-linux -o /scripts/apply-network-config
+chmod a+x /scripts/apply-network-config
+
+```
