@@ -2,7 +2,7 @@
 
 SCRIPTS_PATH="/scripts"
 
-PYTHON_PATH=$(which python || which python2 || which python3)
+PYTHON_PATH=$(which python || which python2 || which python3 || which /usr/libexec/platform-python)
 
 "${PYTHON_PATH}" "${SCRIPTS_PATH}/apply-networking-linux.py" $1
 
