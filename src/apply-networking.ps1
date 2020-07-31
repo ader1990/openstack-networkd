@@ -367,17 +367,29 @@ function Set-NetworkConfig {
         Write-Log "Setting IPv4 networks for link $($link.id)"
         $addressFamily = $addressFamilyIpv4
 
+        Write-Log "Cleaning up IPv4 addresses on $($network.link)."
+        Remove-NetIPAddress -InterfaceIndex $iface.ifIndex -Confirm:$false `
+            -AddressFamily $addressFamily -ErrorAction SilentlyContinue
+
         $nameservers = $networksIPv4.services | Where-Object { $_.type -eq "dns" }
         Set-Nameservers $nameservers $link.id
 
         $networksParsedIPv4 = @()
+        foreach ($netIpv4 in $networksIPv4) {
+            Write-Log "Found IPv4 $($netIpv4) for link $($link.id)"
+            $networksParsedIPv4 += @{
+                "address" = $netIpv4.ip_address;
+                "prefix" = (ConvertTo-MaskLength $netIpv4.netmask);
+            }
+        }
+
         foreach ($networkParsedIPv4 in $networksParsedIPv4) {
-            Write-Log "Set new IP on Link $($network.link)."
+            Write-Log "Set new IP $($networkParsedIPv4["address"] + '/' + $networkParsedIPv4["prefix"]) on $($link.id)"
             New-NetIPAddress -IPAddress $networkParsedIPv4["address"] `
                  -PrefixLength $networkParsedIPv4["prefix"] `
                  -InterfaceIndex $iface.ifIndex `
                  -AddressFamily $addressFamily `
-                 -Confirm:$false -ErrorAction "SilentlyContinue" | Out-Null
+                 -Confirm:$false | Out-Null
         }
     } else {
         Set-NetIPInterface -InterfaceIndex $iface.ifIndex -Dhcp Enabled `
@@ -411,7 +423,7 @@ function Set-NetworkConfig {
                  -PrefixLength $networkParsedIPv6["prefix"] `
                  -InterfaceIndex $iface.ifIndex `
                  -AddressFamily $addressFamily `
-                 -Confirm:$false
+                 -Confirm:$false | Out-Null
         }
     } else {
         Set-NetIPInterface -InterfaceIndex $iface.ifIndex -Dhcp Enabled `
