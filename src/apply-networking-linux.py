@@ -527,7 +527,7 @@ class CentOSDistro(DebianInterfacesDistro):
                 ethernets[os_link_name]["ipv6"] += [address]
                 ethernets[os_link_name]["gateway_ipv6"] = gateway
             else:
-                len_addr = len(ethernets[os_link_name]["ipv6"])
+                len_addr = len(ethernets[os_link_name]["ipv4"])
                 address["index"] = "%s" % len_addr
                 ethernets[os_link_name]["init_ipv4"] = "yes"
                 ethernets[os_link_name]["ipv4"] += [address]
