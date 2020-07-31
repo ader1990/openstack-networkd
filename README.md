@@ -258,11 +258,11 @@ $isoPath = "C:\fedora-virtio.iso"
 $wc.downloadFile("https://fedorapeople.org/groups/virt/virtio-win/direct-downloads/archive-virtio/virtio-win-0.1.187-1/virtio-win-0.1.187.iso", $isoPath)
 
 # mount iso and install agent
-$mountResult = Mount-DiskImage "isoPath" -PassThru
+$mountResult = Mount-DiskImage $isoPath -PassThru
 Get-PsDrive | Out-Null
 $mountPoint = ($mountResult | Get-Volume).DriveLetter
 
-msiexe -i "${mountPoint}:\guest-agent\qemu-ga-x86_64.msi" /qn 
+msiexe -i "${mountPoint}:\guest-agent\qemu-ga-x86_64.msi" /qn
 
 Get-Service "qemu*" # there should be two services, one running
 
@@ -272,7 +272,7 @@ $wc.downloadFile("https://raw.githubusercontent.com/ader1990/openstack-networkd/
 
 
 
-# For Ubuntu 18.04
+# For Ubuntu 18.04 and Ubuntu 16.04
 
 ```bash
 #!/bin/bash
@@ -280,7 +280,7 @@ apt update && apt install qemu-guest-agent -y
 ```
 # For CentOS 7 and CentOS 8
 
-Firstly, disable SELINUX and reboot.
+Firstly, disable SELINUX (if not disabled) and reboot.
 
 ```bash
 #!/bin/bash
