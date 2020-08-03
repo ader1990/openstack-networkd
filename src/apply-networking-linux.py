@@ -160,7 +160,8 @@ class DebianInterfacesDistro(object):
         lo_data = {
             "name": "lo",
             "type": "loopback",
-            "family": ""
+            "family": "",
+            "index": ""
         }
         template_string += (
             format_template(self.default_template, lo_data) + "\n")
