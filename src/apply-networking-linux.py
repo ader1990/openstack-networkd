@@ -35,7 +35,7 @@ ENI_INTERFACE_HEADER = """
 """
 ENI_INTERFACE_STATIC_TEMPLATE = """
 auto $name$index
-iface $name inet$family$index $type
+iface $name$index inet$family $type
     hwaddress ether $mac_address
     address $address
     mtu $mtu
@@ -45,7 +45,7 @@ iface $name inet$family$index $type
 """
 ENI_INTERFACE_DEFAULT_TEMPLATE = """
 auto $name$index
-iface $name inet$family $type
+iface $name$index inet$family $type
 """
 SYS_CLASS_NET = "/sys/class/net/"
 
