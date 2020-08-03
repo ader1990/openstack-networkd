@@ -37,8 +37,7 @@ ENI_INTERFACE_STATIC_TEMPLATE = """
 auto $name$index
 iface $name$index inet$family $type
     hwaddress ether $mac_address
-    address $address
-    mtu $mtu
+    address $address$mtu
     netmask $netmask
     gateway $gateway
     dns-nameservers $dns
@@ -47,8 +46,7 @@ ENI_DEBIAN_BUSTER_INTERFACE_STATIC_TEMPLATE = """
 auto $name$index
 iface $name$index inet$family $type
     hwaddress ether $mac_address
-    address $address
-    mtu $mtu
+    address $address$mtu
     netmask $netmask
     post-up route add -A inet$family default gw $gateway || true
     pre-down route del -A inet$family default gw $gateway || true
@@ -216,6 +214,8 @@ class DebianInterfacesDistro(object):
                 interface_index = interface_indexes.get(interface_index_id, 0)
                 if interface_index != 0:
                     interface_index_str = ":%d" % (interface_index - 1)
+                if not interface_index_str:
+                    mtu = "\n    mtu %s" % links[network["link"]]["mtu"]
                 interface_indexes[interface_index_id] = interface_index + 1
                 gateway = None
                 for route in network["routes"]:
@@ -243,7 +243,7 @@ class DebianInterfacesDistro(object):
                     "type": net_type,
                     "family": family,
                     "mac_address": mac_address,
-                    "mtu": links[network["link"]]["mtu"],
+                    "mtu": mtu,
                     "address": network["ip_address"],
                     "netmask": netmask,
                     "gateway": gateway,
