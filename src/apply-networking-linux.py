@@ -563,7 +563,13 @@ class CentOSDistro(DebianInterfacesDistro):
 
 
 def get_os_distribution():
-    return platform.dist()
+    try:
+        return platform.dist()
+    except Exception:
+        import distro
+        return [distro.name(),
+                distro.major_version() + '.' + distro.minor_version(),
+                distro.codename()]
 
 
 def format_template(template, data):
@@ -770,7 +776,8 @@ def configure_network(b64json_network_data, reset_to_dhcp=False):
             os_distrib_str.find("debian 10.") == 0 or
             os_distrib_str == "Ubuntu 16.04 xenial"):
         DISTRO = DebianInterfacesd50Distro()
-    elif (os_distrib_str == "Ubuntu 18.04 bionic"):
+    elif (os_distrib_str == "Ubuntu 18.04 bionic" or
+            os_distrib_str == "Ubuntu 20.04 focal"):
         DISTRO = NetplanDistro()
     elif (os_distrib_str.find("centos ") == 0):
         DISTRO = CentOSDistro()
