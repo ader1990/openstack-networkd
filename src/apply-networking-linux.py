@@ -368,6 +368,13 @@ class DebianInterfacesd50Distro(DebianInterfacesDistro):
         self.config_file = "/etc/network/interfaces.d/50-cloud-init.cfg"
 
 
+class DebianBusterInterfacesd50Distro(DebianInterfacesDistro):
+
+    def __init__(self):
+        super(DebianInterfacesd50Distro, self).__init__()
+        self.config_file = "/etc/network/interfaces.d/50-cloud-init"
+
+
 class NetplanDistro(DebianInterfacesDistro):
 
     def __init__(self):
@@ -773,9 +780,10 @@ def configure_network(b64json_network_data, reset_to_dhcp=False):
             os_distrib_str.find("debian 8.") == 0):
         DISTRO = DebianInterfacesDistro()
     elif (os_distrib_str.find("debian 9") == 0 or
-            os_distrib_str.find("debian 10.") == 0 or
             os_distrib_str == "Ubuntu 16.04 xenial"):
         DISTRO = DebianInterfacesd50Distro()
+    elif (os_distrib_str.find("debian 10") == 0):
+        DISTRO = DebianBusterInterfacesd50Distro()
     elif (os_distrib_str == "Ubuntu 18.04 bionic" or
             os_distrib_str == "Ubuntu 20.04 focal"):
         DISTRO = NetplanDistro()
