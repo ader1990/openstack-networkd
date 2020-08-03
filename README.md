@@ -257,6 +257,8 @@ python src/apply-networking-linux.py $networkConfigB64
 ## For Windows Server (2012 R2, 2016, 2019)
 
 ```powershell
+$ErrorActionPreference = "Stop"
+
 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
 $wc = New-Object System.Net.WebClient
 
@@ -269,31 +271,33 @@ $mountResult = Mount-DiskImage $isoPath -PassThru
 Get-PsDrive | Out-Null
 $mountPoint = ($mountResult | Get-Volume).DriveLetter
 
-msiexe -i "${mountPoint}:\guest-agent\qemu-ga-x86_64.msi" /qn
+msiexec.exe -i "${mountPoint}:\guest-agent\qemu-ga-x86_64.msi" /qn
 
 Get-Service "qemu*" # there should be two services, one running
 
-mkdir "C:\scripts"
-$scriptPath = "C:\\scripts\\apply-network-config.ps1"
+$scriptRoot = "C:\scripts"
+mkdir $scriptRoot -Force
+$scriptPath = "$scriptRoot\apply-network-config.ps1"
 
 # Download PowerShell script that applies the network config
 $wc.downloadFile("https://raw.githubusercontent.com/ader1990/openstack-networkd/master/src/apply-networking.ps1", $scriptPath)
 
+# Set access rules only for LocalSystem and Administrators
 $acl = Get-Acl $scriptPath
-$acl.SetOwner([System.Security.Principal.NTAccount]"NT AUTHORITY\SYSTEM")
-$acl.SetGroup([System.Security.Principal.NTAccount]"NT AUTHORITY\SYSTEM")
+$acl.SetOwner([System.Security.Principal.NTAccount]"BUILTIN\Administrators")
+$acl.SetGroup([System.Security.Principal.NTAccount]"BUILTIN\Administrators")
 $acl.SetAccessRuleProtection($true, $true)
+
 foreach ($rule in $acl.Access) {
     $acl.RemoveAccessRule($rule)
 }
+
 $localSystemAccessRule = New-Object System.Security.AccessControl.FileSystemAccessRule("NT AUTHORITY\SYSTEM", "FullControl", "Allow")
 $administratorsAccessRule = New-Object System.Security.AccessControl.FileSystemAccessRule("BUILTIN\Administrators", "FullControl", "Allow")
 $acl.AddAccessRule($localSystemAccessRule)
 $acl.AddAccessRule($administratorsAccessRule)
 
 $acl | Set-Acl $scriptPath
-
-
 
 ````
 
