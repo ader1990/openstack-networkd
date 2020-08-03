@@ -1,0 +1,34 @@
+
+module qemu-ga 1.0;
+
+require {
+        type net_conf_t;
+        type qemu_exec_t;
+        type ifconfig_exec_t;
+        type default_t;
+        type virt_qemu_ga_t;
+        class capability net_admin;
+        class netlink_route_socket nlmsg_write;
+        class dir { getattr search };
+        class file { execute execute_no_trans getattr ioctl open read write };
+}
+
+#============= virt_qemu_ga_t ==============
+
+#!!!! WARNING: 'default_t' is a base type.
+allow virt_qemu_ga_t default_t:file execute;
+allow virt_qemu_ga_t default_t:file { execute_no_trans getattr ioctl open read };
+
+#!!!! This avc is allowed in the current policy
+allow virt_qemu_ga_t ifconfig_exec_t:file { execute execute_no_trans open read };
+
+#!!!! This avc is allowed in the current policy
+allow virt_qemu_ga_t net_conf_t:file write;
+allow virt_qemu_ga_t qemu_exec_t:dir search;
+
+#!!!! This avc is allowed in the current policy
+allow virt_qemu_ga_t qemu_exec_t:dir getattr;
+allow virt_qemu_ga_t self:capability net_admin;
+
+#!!!! This avc is allowed in the current policy
+allow virt_qemu_ga_t self:netlink_route_socket nlmsg_write;

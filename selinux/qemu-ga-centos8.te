@@ -1,0 +1,28 @@
+
+module qemu-ga 1.0;
+
+require {
+        type net_conf_t;
+        type default_t;
+        type ifconfig_exec_t;
+        type virt_qemu_ga_t;
+        class file { execute execute_no_trans getattr ioctl map open read write };
+        class netlink_route_socket nlmsg_write;
+        class capability net_admin;
+}
+
+#============= virt_qemu_ga_t ==============
+
+#!!!! This avc is allowed in the current policy
+#!!!! This av rule may have been overridden by an extended permission av rule
+allow virt_qemu_ga_t default_t:file { execute execute_no_trans getattr ioctl open read };
+
+#!!!! This avc is allowed in the current policy
+allow virt_qemu_ga_t ifconfig_exec_t:file { execute execute_no_trans map open read };
+
+#!!!! This avc is allowed in the current policy
+allow virt_qemu_ga_t net_conf_t:file write;
+allow virt_qemu_ga_t self:capability net_admin;
+
+#!!!! This avc is allowed in the current policy
+allow virt_qemu_ga_t self:netlink_route_socket nlmsg_write;
