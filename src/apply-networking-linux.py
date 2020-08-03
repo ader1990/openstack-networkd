@@ -214,7 +214,7 @@ class DebianInterfacesDistro(object):
                 interface_index = interface_indexes.get(interface_index_id, 0)
                 if interface_index != 0:
                     interface_index_str = ":%d" % (interface_index - 1)
-                if not interface_index_str:
+                else:
                     mtu = "\n    mtu %s" % links[network["link"]]["mtu"]
                 interface_indexes[interface_index_id] = interface_index + 1
                 gateway = None
