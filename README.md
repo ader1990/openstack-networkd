@@ -294,12 +294,13 @@ sed -i '/^BLACKLIST_RPC=/d' /etc/sysconfig/qemu-ga
 systemctl restart qemu-guest-agent
 ```
 
-You can either disable selinux, disable selinux for qemu-ga or apply the required policies for qemu-ga.
+Because of selinux policies, the scripts will not run unless you:
+
+  - disable selinux
+  - disable selinux for qemu-ga -> `semanage permissive -a virt_qemu_ga_t`
+  - apply the required policies for qemu-ga (Recommended)
 
 ```bash
-# To disable selinux only for qemu-ga
-semanage permissive -a virt_qemu_ga_t
-
 # To apply the required policy (no need to disable selinux)
 yum install -y selinux-policy-devel
 
@@ -323,7 +324,7 @@ semodule -DB
 semanage permissive -a virt_qemu_ga_t
 
 # From Horizon, run all the desired operations (add, update or remove IP)
-# Make sure all the operation finish successfully
+# Make sure all the operations finish successfully
 
 # Generate policy
 grep virt_qemu_ga_t /var/log/audit/audit.log | audit2allow -a -M qemu-ga
