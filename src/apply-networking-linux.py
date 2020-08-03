@@ -210,6 +210,7 @@ class DebianInterfacesDistro(object):
 
             if net_type == "static":
                 interface_index_str = ""
+                mtu = ""
                 interface_index_id = "%s%s" % (os_link_name, family)
                 interface_index = interface_indexes.get(interface_index_id, 0)
                 if interface_index != 0:
