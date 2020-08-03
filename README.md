@@ -247,7 +247,7 @@ python src/apply-networking-linux.py $networkConfigB64
 
 # How to configure Qemu Guest Agents
 
-# For Windows Server (2012 R2, 2016, 2019)
+## For Windows Server (2012 R2, 2016, 2019)
 
 ```powershell
 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
@@ -272,15 +272,15 @@ $wc.downloadFile("https://raw.githubusercontent.com/ader1990/openstack-networkd/
 
 
 
-# For Ubuntu 18.04 and Ubuntu 16.04
+## For Ubuntu 18.04 and Ubuntu 16.04
 
 ```bash
 #!/bin/bash
 apt update && apt install qemu-guest-agent -y
 ```
-# For CentOS 7 and CentOS 8
+## For CentOS 7 and CentOS 8
 
-Firstly, disable SELINUX (if not disabled) and reboot.
+Install the qemu-guest agent
 
 ```bash
 #!/bin/bash
@@ -295,7 +295,29 @@ sed -i '/^BLACKLIST_RPC=/d' /etc/sysconfig/qemu-ga
 systemctl restart qemu-guest-agent
 ```
 
-# Script to get files for all the Linux versions
+You can either disable selinux, disable selinux for qemu-ga or apply the required policies for qemu-ga.
+
+```bash
+# To disable selinux only for qemu-ga
+semanage permissive -a virt_qemu_ga_t
+
+yum install -y selinux-policy-devel
+
+# For Centos 7
+curl "https://raw.githubusercontent.com/ader1990/openstack-networkd/master/selinux/qemu-ga-centos7.te" -o /tmp/qemu-ga.te
+
+# For Centos 8
+curl "https://raw.githubusercontent.com/ader1990/openstack-networkd/master/selinux/qemu-ga-centos8.te" -o /tmp/qemu-ga.te
+
+# Build and install the policy
+pushd /tmp
+make -f /usr/share/selinux/devel/Makefile qemu-ga.pp
+semodule -i qemu-ga.pp
+
+```
+
+
+## Script to get files for all the Linux versions
 
 ```
 #!/bin/bash
