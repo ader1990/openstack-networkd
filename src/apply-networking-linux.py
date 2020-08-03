@@ -372,7 +372,7 @@ class DebianInterfacesd50Distro(DebianInterfacesDistro):
 class DebianBusterInterfacesd50Distro(DebianInterfacesDistro):
 
     def __init__(self):
-        super(DebianInterfacesd50Distro, self).__init__()
+        super(DebianBusterInterfacesd50Distro, self).__init__()
         self.config_file = "/etc/network/interfaces.d/50-cloud-init"
 
 
