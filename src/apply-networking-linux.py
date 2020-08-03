@@ -162,7 +162,7 @@ class DebianInterfacesDistro(object):
     def __init__(self):
         self.config_file = "/etc/network/interfaces"
         self.default_template = ENI_INTERFACE_DEFAULT_TEMPLATE
-        self.static_template = ENI_INTERFACE_STATIC_TEMPLATE
+        self.static_template = ENI_DEBIAN_BUSTER_INTERFACE_STATIC_TEMPLATE
 
     def set_network_config_file(self, network_data, reset_to_dhcp=False):
         template_string = ENI_INTERFACE_HEADER + "\n"
