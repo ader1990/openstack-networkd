@@ -304,13 +304,13 @@ $acl | Set-Acl $scriptPath
 ````
 
 
-## Install Qemu Guest Agent on Ubuntu 16.04, Ubuntu 18.04 and Ubuntu 20.04
+## Install Qemu Guest Agent on Ubuntu 16.04, Ubuntu 18.04, Ubuntu 20.04, Debian 10
 
 ```bash
 #!/bin/bash
 apt update && apt install qemu-guest-agent -y
 
-# Needed for Ubuntu 20.04
+# Needed for Debian 10 and Ubuntu 20.04
 systemctl enable qemu-guest-agent
 systemctl start qemu-guest-agent
 ```
@@ -376,7 +376,14 @@ grep virt_qemu_ga_t /var/log/audit/audit.log | audit2allow -a -M qemu-ga
 #!/bin/bash
 
 mkdir /scripts
-curl https://raw.githubusercontent.com/ader1990/openstack-networkd/master/src/apply-networking-linux.py -o /scripts/apply-networking-linux.py
-curl https://raw.githubusercontent.com/ader1990/openstack-networkd/master/src/apply-networking-linux -o /scripts/apply-network-config
+args="-o"
+download_cmd=$(which curl)
+
+if [ $? -ne 0 ]; then
+    download_cmd=$(which wget)
+    args="-O"
+fi
+$download_cmd https://raw.githubusercontent.com/ader1990/openstack-networkd/master/src/apply-networking-linux.py "${args}" /scripts/apply-networking-linux.py
+$download_cmd https://raw.githubusercontent.com/ader1990/openstack-networkd/master/src/apply-networking-linux "${args}" /scripts/apply-network-config
 chmod a+x /scripts/apply-network-config
 ```

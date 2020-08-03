@@ -203,7 +203,7 @@ class DebianInterfacesDistro(object):
                 interface_index_id = "%s%s" % (os_link_name, family)
                 interface_index = interface_indexes.get(interface_index_id, 0)
                 if interface_index != 0:
-                    interface_index_str = ":%s" % interface_index - 1
+                    interface_index_str = ":%d" % (interface_index - 1)
                 interface_indexes[interface_index_id] = interface_index + 1
                 gateway = None
                 for route in network["routes"]:
