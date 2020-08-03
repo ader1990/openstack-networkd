@@ -271,6 +271,7 @@ $wc.downloadFile("https://raw.githubusercontent.com/ader1990/openstack-networkd/
 ````
 
 
+HOw to install and configure qemu-guest agent
 
 ## For Ubuntu 18.04 and Ubuntu 16.04
 
@@ -279,8 +280,6 @@ $wc.downloadFile("https://raw.githubusercontent.com/ader1990/openstack-networkd/
 apt update && apt install qemu-guest-agent -y
 ```
 ## For CentOS 7 and CentOS 8
-
-Install the qemu-guest agent
 
 ```bash
 #!/bin/bash
@@ -301,6 +300,7 @@ You can either disable selinux, disable selinux for qemu-ga or apply the require
 # To disable selinux only for qemu-ga
 semanage permissive -a virt_qemu_ga_t
 
+# To apply the required policy (no need to disable selinux)
 yum install -y selinux-policy-devel
 
 # For Centos 7
@@ -314,10 +314,27 @@ pushd /tmp
 make -f /usr/share/selinux/devel/Makefile qemu-ga.pp
 semodule -i qemu-ga.pp
 
+# How to create the policy from scratch (advanced)
+
+# Disable noaudit rules
+semodule -DB
+
+# Set permissive for qemu-ga only
+semanage permissive -a virt_qemu_ga_t
+
+# From Horizon, run all the desired operations (add, update or remove IP)
+# Make sure all the operation finish successfully
+
+# Generate policy
+grep virt_qemu_ga_t /var/log/audit/audit.log | audit2allow -a -M qemu-ga
+
+# Now you will have the binary qemu-ga.pp file and the declarative qemu-ga.te file
+# If you have the .te file, you need to compile it into a .pp file to apply with semodule -i
+
 ```
 
 
-## Script to get files for all the Linux versions
+## Script to download required executables for Linux
 
 ```
 #!/bin/bash
