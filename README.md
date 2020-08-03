@@ -271,7 +271,9 @@ $mountResult = Mount-DiskImage $isoPath -PassThru
 Get-PsDrive | Out-Null
 $mountPoint = ($mountResult | Get-Volume).DriveLetter
 
-msiexec.exe -i "${mountPoint}:\guest-agent\qemu-ga-x86_64.msi" /qn
+Start-Process -FilePath "C:\Windows\System32\msiexec.exe" `
+    -ArgumentList @("/i", "${mountPoint}:\guest-agent\qemu-ga-x86_64.msi", "/qn") `
+    -NoNewWindow -Wait
 
 Get-Service "qemu*" # there should be two services, one running
 
