@@ -304,13 +304,13 @@ $acl | Set-Acl $scriptPath
 ````
 
 
-## Install Qemu Guest Agent on Ubuntu 16.04, Ubuntu 18.04, Ubuntu 20.04, Debian 10
+## Install Qemu Guest Agent on Ubuntu 16.04, Ubuntu 18.04, Ubuntu 20.04, Debian 9, Debian 10
 
 ```bash
 #!/bin/bash
 apt update && apt install qemu-guest-agent -y
 
-# Needed for Debian 10 and Ubuntu 20.04
+# Needed for Debian 9, Debian 10, Ubuntu 20.04
 systemctl enable qemu-guest-agent
 systemctl start qemu-guest-agent
 ```
