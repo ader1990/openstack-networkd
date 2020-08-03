@@ -247,6 +247,13 @@ python src/apply-networking-linux.py $networkConfigB64
 
 # How to configure Qemu Guest Agents
 
+## Common workflow for all operating systems
+
+  - Install Qemu Guest Agent as a service
+  - Configure Qemu Guest Agent to be able to execute commands
+  - Configure the operating system to allow Qemu Guest Agent to execute commands
+  - Download the scripts that implement the functionality to the required path
+
 ## For Windows Server (2012 R2, 2016, 2019)
 
 ```powershell
@@ -271,15 +278,13 @@ $wc.downloadFile("https://raw.githubusercontent.com/ader1990/openstack-networkd/
 ````
 
 
-HOw to install and configure qemu-guest agent
-
-## For Ubuntu 18.04 and Ubuntu 16.04
+## Install Qemu Guest Agent on Ubuntu 18.04 and Ubuntu 16.04
 
 ```bash
 #!/bin/bash
 apt update && apt install qemu-guest-agent -y
 ```
-## For CentOS 7 and CentOS 8
+##  Install Qemu Guest Agent on CentOS 7 and CentOS 8
 
 ```bash
 #!/bin/bash
@@ -335,7 +340,7 @@ grep virt_qemu_ga_t /var/log/audit/audit.log | audit2allow -a -M qemu-ga
 ```
 
 
-## Script to download required executables for Linux
+## Download required executables for Linux
 
 ```
 #!/bin/bash
@@ -344,5 +349,4 @@ mkdir /scripts
 curl https://raw.githubusercontent.com/ader1990/openstack-networkd/master/src/apply-networking-linux.py -o /scripts/apply-networking-linux.py
 curl https://raw.githubusercontent.com/ader1990/openstack-networkd/master/src/apply-networking-linux -o /scripts/apply-network-config
 chmod a+x /scripts/apply-network-config
-
 ```
