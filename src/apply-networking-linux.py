@@ -43,6 +43,17 @@ iface $name$index inet$family $type
     gateway $gateway
     dns-nameservers $dns
 """
+ENI_DEBIAN_BUSTER_INTERFACE_STATIC_TEMPLATE = """
+auto $name$index
+iface $name$index inet$family $type
+    hwaddress ether $mac_address
+    address $address
+    mtu $mtu
+    netmask $netmask
+    post-up route add -A inet$family default gw $gateway || true
+    pre-down route del -A inet$family default gw $gateway || true
+    dns-nameservers $dns
+"""
 ENI_INTERFACE_DEFAULT_TEMPLATE = """
 auto $name$index
 iface $name$index inet$family $type
@@ -374,6 +385,7 @@ class DebianBusterInterfacesd50Distro(DebianInterfacesDistro):
     def __init__(self):
         super(DebianBusterInterfacesd50Distro, self).__init__()
         self.config_file = "/etc/network/interfaces.d/50-cloud-init"
+        self.static_template = ENI_DEBIAN_BUSTER_INTERFACE_STATIC_TEMPLATE
 
 
 class NetplanDistro(DebianInterfacesDistro):
