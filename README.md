@@ -392,7 +392,7 @@ semanage permissive -a virt_qemu_ga_t
 grep virt_qemu_ga_t /var/log/audit/audit.log | audit2allow -a -M qemu-ga
 
 # Now you will have the binary qemu-ga.pp file and the declarative qemu-ga.te file
-# If you have the .te file, you need to compile it into a .pp file to apply with semodule -i
+# If you have the .te file, you need to compile it into a .pp file to apply with `semodule -i <policy.pp>`
 
 ```
 
