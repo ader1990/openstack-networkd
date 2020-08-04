@@ -245,7 +245,7 @@ python src/apply-networking-linux.py $networkConfigB64
 
 ```
 
-# How to configure Qemu Guest Agents
+# How to configure Qemu Guest Agent (required version >= 2.5)
 
 ## Common workflow for all operating systems
 
@@ -315,7 +315,7 @@ systemctl enable qemu-guest-agent
 systemctl start qemu-guest-agent
 ```
 
-## Install Qemu Guest Agent on Debian 8
+## Install Qemu Guest Agent v2.5 on Debian 8 / Ubuntu 14.04
 
 ```bash
 #!/bin/bash
@@ -326,7 +326,7 @@ apt update && apt install qemu-guest-agent -y
 # !Make sure you blacklist the qemu-guest-agent from future updates
 
 # Build the required qemu guest agent from source >= 2.5
-  apt-get install -y git gcc libaio-dev libbluetooth-dev libbrlapi-dev \
+apt-get install -y git gcc libaio-dev libbluetooth-dev libbrlapi-dev \
     libbz2-dev zlib1g-dev build-essential pkg-config libglib2.0-dev \
     binutils-dev libboost-all-dev autoconf libtool libssl-dev libpixman-1-dev libpython-dev
 
@@ -335,9 +335,10 @@ cd qemu
 git checkout v2.5.1.1
 ./configure --disable-system --enable-guest-agent --prefix=/
 make qemu-ga -j16
-systemctl stop qemu-guest-agent
+service qemu-guest-agent stop
+cp /usr/sbin/qemu-ga /usr/sbin/qemu-ga.bak
 cp qemu-ga /usr/sbin/qemu-ga
-systemctl start qemu-guest-agent
+service qemu-guest-agent start
 ```
 
 ##  Install Qemu Guest Agent on CentOS 7 and CentOS 8
