@@ -458,7 +458,9 @@ if [ $? -ne 0 ]; then
     download_cmd=$(which wget)
     args="-O"
 fi
-$download_cmd https://raw.githubusercontent.com/ader1990/openstack-networkd/master/src/apply-networking-linux.py "${args}" /scripts/apply-networking-linux.py
-$download_cmd https://raw.githubusercontent.com/ader1990/openstack-networkd/master/src/apply-networking-linux "${args}" /scripts/apply-network-config
+
+script_url="https://raw.githubusercontent.com/ader1990/openstack-networkd/devel/src"
+$download_cmd "${script_url}/apply-networking-linux.py" "${args}" /scripts/apply-networking-linux.py
+$download_cmd "${script_url}/apply-networking-linux" "${args}" /scripts/apply-network-config
 chmod a+x /scripts/apply-network-config
 ```
