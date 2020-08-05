@@ -151,7 +151,7 @@ IPADDR$index=$address
 """
 
 CENTOS_STATIC_TEMPLATE_IP_V6 = """
-IPV6ADDR$index=$address
+IPV6ADDR$index=$address/$prefix
 """
 
 SUPPORTED_NETWORK_TYPES = ["ipv4", "ipv6", "ipv4_dhcp", "ipv6_dhcp"]
@@ -554,7 +554,7 @@ class CentOSDistro(DebianInterfacesDistro):
                 ethernets[os_link_name]["gateway_ipv6"] = gateway
             else:
                 len_addr = len(ethernets[os_link_name]["ipv4"])
-                address["index"] = "%s" % len_addr
+                address["index"] = "%d" % (len_addr - 1)
                 ethernets[os_link_name]["init_ipv4"] = "yes"
                 ethernets[os_link_name]["ipv4"] += [address]
                 ethernets[os_link_name]["gateway_ipv4"] = gateway
