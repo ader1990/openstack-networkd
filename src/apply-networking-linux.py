@@ -548,13 +548,15 @@ class CentOSDistro(DebianInterfacesDistro):
 
             if family == "6":
                 len_addr = len(ethernets[os_link_name]["ipv6"])
-                address["index"] = "%s" % len_addr
+                address["index"] = "%d" % len_addr
+                if address["index"] == "0":
+                    address["index"] = ""
                 ethernets[os_link_name]["init_ipv6"] = "yes"
                 ethernets[os_link_name]["ipv6"] += [address]
                 ethernets[os_link_name]["gateway_ipv6"] = gateway
             else:
                 len_addr = len(ethernets[os_link_name]["ipv4"])
-                address["index"] = "%d" % (len_addr - 1)
+                address["index"] = "%d" % len_addr
                 ethernets[os_link_name]["init_ipv4"] = "yes"
                 ethernets[os_link_name]["ipv4"] += [address]
                 ethernets[os_link_name]["gateway_ipv4"] = gateway
