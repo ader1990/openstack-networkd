@@ -141,17 +141,13 @@ IPV6INIT=$init_ipv6
 GATEWAY=$gateway_ipv4
 IPV6_DEFAULTGW=$gateway_ipv6%$name
 $ipv4_str
-$ipv6_str
+IPV6ADDR_SECONDARIES="$ipv6_str"
 $dns
 """
 
 CENTOS_STATIC_TEMPLATE_IP_V4 = """
 PREFIX$index=$prefix
 IPADDR$index=$address
-"""
-
-CENTOS_STATIC_TEMPLATE_IP_V6 = """
-IPV6ADDR$index=$address
 """
 
 SUPPORTED_NETWORK_TYPES = ["ipv4", "ipv6", "ipv4_dhcp", "ipv6_dhcp"]
@@ -496,6 +492,7 @@ class CentOSDistro(DebianInterfacesDistro):
                 "ipv6_str": "",
                 "init_ipv4": "no",
                 "init_ipv6": "no",
+                "dns_set": set(),
                 "dns": "",
                 "dns_nr": 1,
             }
@@ -512,11 +509,15 @@ class CentOSDistro(DebianInterfacesDistro):
 
             dns_template = ""
             for service in network["services"]:
-                if str(service["type"]) == "dns":
-                    dns_nr = ethernets[os_link_name]["dns_nr"]
-                    dns_template += ("DNS%d=%s\n" % (
-                        dns_nr, service["address"]))
-                    ethernets[os_link_name]["dns_nr"] += 1
+                if (str(service["type"]) == "dns" and
+                        not (service["address"] in
+                             ethernets[os_link_name]["dns_set"])):
+                        dns_nr = ethernets[os_link_name]["dns_nr"]
+                        dns_template += ("DNS%d=%s\n" % (
+                            dns_nr, service["address"]))
+                        ethernets[os_link_name]["dns_nr"] += 1
+                        ethernets[os_link_name]["dns_set"].add(
+                            service["address"])
 
             gateway = None
             for route in network["routes"]:
@@ -543,13 +544,15 @@ class CentOSDistro(DebianInterfacesDistro):
 
             if family == "6":
                 len_addr = len(ethernets[os_link_name]["ipv6"])
-                address["index"] = "%s" % len_addr
+                address["index"] = "%d" % len_addr
+                if address["index"] == "0":
+                    address["index"] = ""
                 ethernets[os_link_name]["init_ipv6"] = "yes"
                 ethernets[os_link_name]["ipv6"] += [address]
                 ethernets[os_link_name]["gateway_ipv6"] = gateway
             else:
                 len_addr = len(ethernets[os_link_name]["ipv4"])
-                address["index"] = "%s" % len_addr
+                address["index"] = "%d" % len_addr
                 ethernets[os_link_name]["init_ipv4"] = "yes"
                 ethernets[os_link_name]["ipv4"] += [address]
                 ethernets[os_link_name]["gateway_ipv4"] = gateway
@@ -566,10 +569,8 @@ class CentOSDistro(DebianInterfacesDistro):
                                              ipv4_addr))
 
             for ipv6_addr in ethernets[os_link_name]["ipv6"]:
-                template = CENTOS_STATIC_TEMPLATE_IP_V6
                 ethernets[os_link_name]["ipv6_str"] += (
-                    "%s\n" % format_template(template,
-                                             ipv6_addr))
+                    "%s/%s " % (ipv6_addr["address"], ipv6_addr["prefix"]))
 
             ethernets[os_link_name]["ipv6_str"] = (
                 ethernets[os_link_name]["ipv6_str"].strip())
