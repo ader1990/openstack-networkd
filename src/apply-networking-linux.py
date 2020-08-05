@@ -141,17 +141,13 @@ IPV6INIT=$init_ipv6
 GATEWAY=$gateway_ipv4
 IPV6_DEFAULTGW=$gateway_ipv6%$name
 $ipv4_str
-$ipv6_str
+IPV6ADDR_SECONDARIES="$ipv6_str"
 $dns
 """
 
 CENTOS_STATIC_TEMPLATE_IP_V4 = """
 PREFIX$index=$prefix
 IPADDR$index=$address
-"""
-
-CENTOS_STATIC_TEMPLATE_IP_V6 = """
-IPV6ADDR$index=$address/$prefix
 """
 
 SUPPORTED_NETWORK_TYPES = ["ipv4", "ipv6", "ipv4_dhcp", "ipv6_dhcp"]
@@ -573,10 +569,8 @@ class CentOSDistro(DebianInterfacesDistro):
                                              ipv4_addr))
 
             for ipv6_addr in ethernets[os_link_name]["ipv6"]:
-                template = CENTOS_STATIC_TEMPLATE_IP_V6
                 ethernets[os_link_name]["ipv6_str"] += (
-                    "%s\n" % format_template(template,
-                                             ipv6_addr))
+                    "%s " % ipv6_addr)
 
             ethernets[os_link_name]["ipv6_str"] = (
                 ethernets[os_link_name]["ipv6_str"].strip())
