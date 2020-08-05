@@ -570,7 +570,7 @@ class CentOSDistro(DebianInterfacesDistro):
 
             for ipv6_addr in ethernets[os_link_name]["ipv6"]:
                 ethernets[os_link_name]["ipv6_str"] += (
-                    "%s " % ipv6_addr)
+                    "%s/%s " % (ipv6_addr["ip_address"], ipv6_addr["prefix"]))
 
             ethernets[os_link_name]["ipv6_str"] = (
                 ethernets[os_link_name]["ipv6_str"].strip())
