@@ -386,6 +386,17 @@ sed -i '/^BLACKLIST_RPC=/d' /etc/sysconfig/qemu-ga || true
 yes | cp /usr/bin/qemu-ga /usr/bin/qemu-ga.bak
 yes | cp qemu-ga /usr/bin/qemu-ga
 service qemu-ga start
+
+# To apply the required policy (no need to disable selinux)
+yum install -y selinux-policy-devel
+
+# Get Selinux policy for CentOS 6 and qemu-guest-agent
+curl "https://raw.githubusercontent.com/ader1990/openstack-networkd/master/selinux/qemu-ga-centos6.te" -o /tmp/qemu-ga.te
+
+# Build and install the policy
+pushd /tmp
+make -f /usr/share/selinux/devel/Makefile qemu-ga.pp
+semodule -i qemu-ga.pp
 ```
 
 ##  Install Qemu Guest Agent on CentOS 7 and CentOS 8
@@ -459,7 +470,7 @@ if [ $? -ne 0 ]; then
     args="-O"
 fi
 
-script_url="https://raw.githubusercontent.com/ader1990/openstack-networkd/devel/src"
+script_url="https://raw.githubusercontent.com/ader1990/openstack-networkd/master/src"
 $download_cmd "${script_url}/apply-networking-linux.py" "${args}" /scripts/apply-networking-linux.py
 $download_cmd "${script_url}/apply-networking-linux" "${args}" /scripts/apply-network-config
 chmod a+x /scripts/apply-network-config
