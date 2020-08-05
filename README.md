@@ -341,6 +341,53 @@ cp qemu-ga /usr/sbin/qemu-ga
 service qemu-guest-agent start
 ```
 
+## Default Cloud-Init version for CentOS 6 does not support setting ssh public keys and IPv6 network from config-drive
+
+```bash
+# It is necessary to install a compatible cloud-init version
+
+# Install EPEL
+yum install epel-release -y
+
+# Remove existing cloud-init
+yum remove cloud-init
+
+# Install compatible cloud-init
+yum install -y \
+    https://copr-be.cloud.fedoraproject.org/results/%40cloud-init/el-testing/epel-6-x86_64/00798871-cloud-init/cloud-init-18.3-1.el6.noarch.rpm
+```
+
+## Install Qemu Guest Agent v2.5 on CentOS 6
+
+```bash
+#!/bin/bash
+
+# Install the legacy version for daemon installation
+yum install -y qemu-guest-agent
+
+# !Make sure you blacklist the qemu-guest-agent from future updates
+
+# Build the required qemu guest agent from source >= 2.5
+yum install -y git gcc gcc-c++ zlib zlib-devel \
+    glib2-devel pixman pixman-devel
+
+git clone git://git.qemu-project.org/qemu.git
+cd qemu
+git checkout v2.5.1.1
+./configure --disable-system --enable-guest-agent --prefix=/
+make qemu-ga -j16
+
+service qemu-ga stop
+
+# Update in /etc/sysconfig/qemu-ga or remove the line completely
+# BLACKLIST_RPC=
+sed -i '/^BLACKLIST_RPC=/d' /etc/sysconfig/qemu-ga || true
+
+yes | cp /usr/bin/qemu-ga /usr/bin/qemu-ga.bak
+yes | cp qemu-ga /usr/bin/qemu-ga
+service qemu-ga start
+```
+
 ##  Install Qemu Guest Agent on CentOS 7 and CentOS 8
 
 ```bash
@@ -394,6 +441,7 @@ grep virt_qemu_ga_t /var/log/audit/audit.log | audit2allow -a -M qemu-ga
 # Now you will have the binary qemu-ga.pp file and the declarative qemu-ga.te file
 # If you have the .te file, you need to compile it into a .pp file to apply with `semodule -i <policy.pp>`
 
+semanage permissive -d virt_qemu_ga_t
 ```
 
 

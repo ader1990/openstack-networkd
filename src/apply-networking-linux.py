@@ -511,12 +511,15 @@ class CentOSDistro(DebianInterfacesDistro):
                 family = "6"
 
             dns_template = ""
+            dns_set = set()
             for service in network["services"]:
-                if str(service["type"]) == "dns":
-                    dns_nr = ethernets[os_link_name]["dns_nr"]
-                    dns_template += ("DNS%d=%s\n" % (
-                        dns_nr, service["address"]))
-                    ethernets[os_link_name]["dns_nr"] += 1
+                if (str(service["type"]) == "dns" and
+                        not service["address"] in dns_set):
+                        dns_nr = ethernets[os_link_name]["dns_nr"]
+                        dns_template += ("DNS%d=%s\n" % (
+                            dns_nr, service["address"]))
+                        ethernets[os_link_name]["dns_nr"] += 1
+                        dns_set.add(service["address"])
 
             gateway = None
             for route in network["routes"]:
