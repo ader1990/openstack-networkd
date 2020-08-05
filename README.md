@@ -475,3 +475,9 @@ $download_cmd "${script_url}/apply-networking-linux.py" "${args}" /scripts/apply
 $download_cmd "${script_url}/apply-networking-linux" "${args}" /scripts/apply-network-config
 chmod a+x /scripts/apply-network-config
 ```
+
+## Restrictions / caveats and other notes that should be taken into considerations
+
+  * CentOS - maximum 3 DNSses are put in /etc/resolv.conf. Note that if you have IPv4 connection and IPv4 DNSses, those DNSsses resolve IPv6 names.
+    See: https://forums.centos.org/viewtopic.php?t=52042
+  * CentOS 6 - the default cloud-init does not set SSH public keys and proper networking from the config drive metadata.
