@@ -48,13 +48,17 @@ iface $name$index inet$family $type
     hwaddress ether $mac_address
     address $address$mtu
     netmask $netmask
-    post-up route add -A inet$family default gw $gateway || true
-    pre-down route del -A inet$family default gw $gateway || true
     dns-nameservers $dns
+    post-up route add -A inet$family default gw $gateway || true
+    pre-down route del -A inet$family default gw $gateway || true$routes
 """
 ENI_INTERFACE_DEFAULT_TEMPLATE = """
 auto $name$index
 iface $name$index inet$family $type
+"""
+ENI_ROUTE_TEMPLATE = """
+    post-up route add -net $network netmask $netmask gw $gateway
+    post-down route del -net $network netmask $netmask gw $gateway
 """
 SYS_CLASS_NET = "/sys/class/net/"
 
@@ -215,12 +219,21 @@ class DebianInterfacesDistro(object):
                     mtu = "\n    mtu %s" % links[network["link"]]["mtu"]
                 interface_indexes[interface_index_id] = interface_index + 1
                 gateway = None
+                routes = ""
                 for route in network["routes"]:
                     route_gateway = route["gateway"]
                     prefixlen = str(mask_to_net_prefix(str(route["netmask"])))
                     if prefixlen == "0":
                         gateway = route_gateway
-                        break
+                    else:
+                        route_dict = {
+                            "gateway": route["gateway"],
+                            "netmask": route["netmask"],
+                            "network": route["network"],
+                        }
+                        route_to_str = format_template(ENI_ROUTE_TEMPLATE,
+                                                       route_dict)
+                        routes += "\n%s" % route_to_str.strip()
 
                 if not gateway:
                     raise Exception("No gateways have been found")
@@ -244,6 +257,7 @@ class DebianInterfacesDistro(object):
                     "address": network["ip_address"],
                     "netmask": netmask,
                     "gateway": gateway,
+                    "routes": routes.rstrip(),
                     "dns": " ".join(dns)
                 }
                 template_string += format_template(self.static_template,
@@ -382,7 +396,6 @@ class DebianBusterInterfacesd50Distro(DebianInterfacesDistro):
     def __init__(self):
         super(DebianBusterInterfacesd50Distro, self).__init__()
         self.config_file = "/etc/network/interfaces.d/50-cloud-init"
-        self.static_template = ENI_DEBIAN_BUSTER_INTERFACE_STATIC_TEMPLATE
 
 
 class NetplanDistro(DebianInterfacesDistro):
