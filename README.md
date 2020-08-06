@@ -480,4 +480,6 @@ chmod a+x /scripts/apply-network-config
 
   * CentOS - maximum 3 DNSses are put in /etc/resolv.conf. Note that if you have IPv4 connection and IPv4 DNSses, those DNSsses resolve IPv6 names.
     See: https://forums.centos.org/viewtopic.php?t=52042
-  * CentOS 6 - the default cloud-init does not set SSH public keys and proper networking from the config drive metadata.
+  * CentOS 6 - the default cloud-init does not set SSH public keys and proper networking from the config drive metadata
+  * cloud-init-nonet service will wait for 120 seconds on upstart systems at boot if multiple IPs for the same interfaces are set
+    See /etc/init/cloud-init-nonet.conf and /etc/network/if-up.d/upstart.
