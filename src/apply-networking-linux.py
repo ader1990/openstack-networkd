@@ -543,12 +543,13 @@ class CentOSDistro(DebianInterfacesDistro):
                 if prefixlen == "0":
                     gateway = route_gateway
                 else:
-                    route_info = "%s/%s via %s dev %s" % (route["network"], prefixlen,
-                                                   gateway, os_link_name)
+                    route_info = "%s/%s via %s dev %s" % (
+                        route["network"], prefixlen,
+                        gateway, os_link_name)
                     if family == "6":
-                        ethernets[os_link_name]["ipv4_routes"] += route_info
-                    else:
                         ethernets[os_link_name]["ipv6_routes"] += route_info
+                    else:
+                        ethernets[os_link_name]["ipv4_routes"] += route_info
 
             if not gateway:
                 LOG("No gateways have been found")
