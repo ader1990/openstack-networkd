@@ -233,7 +233,7 @@ class DebianInterfacesDistro(object):
                         }
                         route_to_str = format_template(ENI_ROUTE_TEMPLATE,
                                                        route_dict)
-                        routes += "\n%s" % route_to_str.strip()
+                        routes += "\n%s" % route_to_str.rstrip()
 
                 if not gateway:
                     raise Exception("No gateways have been found")
