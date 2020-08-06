@@ -48,13 +48,17 @@ iface $name$index inet$family $type
     hwaddress ether $mac_address
     address $address$mtu
     netmask $netmask
-    post-up route add -A inet$family default gw $gateway || true
-    pre-down route del -A inet$family default gw $gateway || true
     dns-nameservers $dns
+    post-up route add -A inet$family default gw $gateway || true
+    pre-down route del -A inet$family default gw $gateway || true$routes
 """
 ENI_INTERFACE_DEFAULT_TEMPLATE = """
 auto $name$index
 iface $name$index inet$family $type
+"""
+ENI_ROUTE_TEMPLATE = """
+    post-up route add -net $network netmask $netmask gw $gateway
+    post-down route del -net $network netmask $netmask gw $gateway
 """
 SYS_CLASS_NET = "/sys/class/net/"
 
@@ -215,12 +219,21 @@ class DebianInterfacesDistro(object):
                     mtu = "\n    mtu %s" % links[network["link"]]["mtu"]
                 interface_indexes[interface_index_id] = interface_index + 1
                 gateway = None
+                routes = ""
                 for route in network["routes"]:
                     route_gateway = route["gateway"]
                     prefixlen = str(mask_to_net_prefix(str(route["netmask"])))
                     if prefixlen == "0":
                         gateway = route_gateway
-                        break
+                    else:
+                        route_dict = {
+                            "gateway": route["gateway"],
+                            "netmask": route["netmask"],
+                            "network": route["network"],
+                        }
+                        route_to_str = format_template(ENI_ROUTE_TEMPLATE,
+                                                       route_dict)
+                        routes += "\n%s" % route_to_str.rstrip()
 
                 if not gateway:
                     raise Exception("No gateways have been found")
@@ -244,6 +257,7 @@ class DebianInterfacesDistro(object):
                     "address": network["ip_address"],
                     "netmask": netmask,
                     "gateway": gateway,
+                    "routes": routes.rstrip(),
                     "dns": " ".join(dns)
                 }
                 template_string += format_template(self.static_template,
@@ -382,7 +396,6 @@ class DebianBusterInterfacesd50Distro(DebianInterfacesDistro):
     def __init__(self):
         super(DebianBusterInterfacesd50Distro, self).__init__()
         self.config_file = "/etc/network/interfaces.d/50-cloud-init"
-        self.static_template = ENI_DEBIAN_BUSTER_INTERFACE_STATIC_TEMPLATE
 
 
 class NetplanDistro(DebianInterfacesDistro):
@@ -468,6 +481,8 @@ class CentOSDistro(DebianInterfacesDistro):
     def __init__(self):
         super(CentOSDistro, self).__init__()
         self.config_file = "/etc/sysconfig/network-scripts/ifcfg-%s"
+        self.config_file_route = "/etc/sysconfig/network-scripts/route-%s"
+        self.config_file_route6 = "/etc/sysconfig/network-scripts/route6-%s"
 
     def set_network_config_file(self, network_data, reset_to_dhcp=False):
         ethernets = {}
@@ -486,6 +501,8 @@ class CentOSDistro(DebianInterfacesDistro):
                 "mtu": link["mtu"],
                 "ipv4": [],
                 "ipv6": [],
+                "ipv4_routes": [],
+                "ipv6_routes": [],
                 "gateway_ipv4": "",
                 "gateway_ipv6": "",
                 "ipv4_str": "",
@@ -525,10 +542,17 @@ class CentOSDistro(DebianInterfacesDistro):
                 prefixlen = str(mask_to_net_prefix(str(route["netmask"])))
                 if prefixlen == "0":
                     gateway = route_gateway
-                    break
+                else:
+                    route_info = "%s/%s via %s dev %s" % (
+                        route["network"], prefixlen,
+                        gateway, os_link_name)
+                    if family == "6":
+                        ethernets[os_link_name]["ipv6_routes"] += route_info
+                    else:
+                        ethernets[os_link_name]["ipv4_routes"] += route_info
 
             if not gateway:
-                raise "No gateways have been found"
+                LOG("No gateways have been found")
 
             netmask = network["netmask"]
             prefix = str(mask_to_net_prefix(str(netmask)))
@@ -582,6 +606,22 @@ class CentOSDistro(DebianInterfacesDistro):
                                               ethernets[os_link_name])
             with open(net_config_file, 'w') as config_file:
                 config_file.write(template_string)
+
+            if ethernets[os_link_name]["ipv4_routes"]:
+                route_config_file = self.config_file_route4 % os_link_name
+                routes = ethernets[os_link_name]["ipv4_routes"]
+                LOG("Writing config to %s" % route_config_file)
+                template_string = "\n".join(routes)
+                with open(route_config_file, 'w') as config_file:
+                    config_file.write(template_string)
+
+            if ethernets[os_link_name]["ipv6_routes"]:
+                route_config_file = self.config_file_route6 % os_link_name
+                routes = ethernets[os_link_name]["ipv6_routes"]
+                LOG("Writing config to %s" % route_config_file)
+                template_string = "\n".join(routes)
+                with open(route_config_file, 'w') as config_file:
+                    config_file.write(template_string)
 
 
 def get_os_distribution():
