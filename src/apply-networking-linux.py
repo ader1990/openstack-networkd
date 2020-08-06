@@ -468,6 +468,8 @@ class CentOSDistro(DebianInterfacesDistro):
     def __init__(self):
         super(CentOSDistro, self).__init__()
         self.config_file = "/etc/sysconfig/network-scripts/ifcfg-%s"
+        self.config_file_route = "/etc/sysconfig/network-scripts/route-%s"
+        self.config_file_route6 = "/etc/sysconfig/network-scripts/route6-%s"
 
     def set_network_config_file(self, network_data, reset_to_dhcp=False):
         ethernets = {}
@@ -486,6 +488,8 @@ class CentOSDistro(DebianInterfacesDistro):
                 "mtu": link["mtu"],
                 "ipv4": [],
                 "ipv6": [],
+                "ipv4_routes": [],
+                "ipv6_routes": [],
                 "gateway_ipv4": "",
                 "gateway_ipv6": "",
                 "ipv4_str": "",
@@ -525,10 +529,16 @@ class CentOSDistro(DebianInterfacesDistro):
                 prefixlen = str(mask_to_net_prefix(str(route["netmask"])))
                 if prefixlen == "0":
                     gateway = route_gateway
-                    break
+                else:
+                    route_info = "%s/%s via %s" % (route["network"], prefixlen,
+                                                   gateway)
+                    if family == "6":
+                        ethernets[os_link_name]["ipv4_routes"] += route_info
+                    else:
+                        ethernets[os_link_name]["ipv6_routes"] += route_info
 
             if not gateway:
-                raise "No gateways have been found"
+                LOG("No gateways have been found")
 
             netmask = network["netmask"]
             prefix = str(mask_to_net_prefix(str(netmask)))
@@ -582,6 +592,22 @@ class CentOSDistro(DebianInterfacesDistro):
                                               ethernets[os_link_name])
             with open(net_config_file, 'w') as config_file:
                 config_file.write(template_string)
+
+            if ethernets[os_link_name]["ipv4_routes"]:
+                route_config_file = self.config_file_route4 % os_link_name
+                routes = ethernets[os_link_name]["ipv4_routes"]
+                LOG("Writing config to %s" % route_config_file)
+                template_string = "\n".join(routes)
+                with open(route_config_file, 'w') as config_file:
+                    config_file.write(template_string)
+
+            if ethernets[os_link_name]["ipv6_routes"]:
+                route_config_file = self.config_file_route6 % os_link_name
+                routes = ethernets[os_link_name]["ipv6_routes"]
+                LOG("Writing config to %s" % route_config_file)
+                template_string = "\n".join(routes)
+                with open(route_config_file, 'w') as config_file:
+                    config_file.write(template_string)
 
 
 def get_os_distribution():
