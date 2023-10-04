@@ -9,4 +9,8 @@ $action = {
     }
 }
 
-Register-WmiEvent -Query "SELECT * FROM __InstanceDeletionEvent WITHIN 2 WHERE TargetInstance isa 'Win32_NetworkAdapter'" -Action $action
+# InstanceDeletionEvents are not triggered on live detach
+# Register-WmiEvent -Query "SELECT * FROM __InstanceDeletionEvent WITHIN 2 WHERE TargetInstance isa 'Win32_NetworkAdapter'" -Action $action
+
+# This will work only if the detach is done before the attach
+Register-WmiEvent -Query "SELECT * FROM __InstanceCreationEvent WITHIN 2 WHERE TargetInstance isa 'Win32_NetworkAdapter'" -Action $action
